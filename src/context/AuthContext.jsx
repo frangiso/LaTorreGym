@@ -6,26 +6,46 @@ import { auth, db } from "../firebase";
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(undefined); // undefined = cargando
-  const [perfil, setPerfil] = useState(null);
+  const [user, setUser] = useState(undefined);
+  const [perfil, setPerfil] = useState(undefined); // undefined = cargando, null = no existe
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+    let unsubPerfil = null;
+
+    const unsubAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      // Limpiar listener anterior si cambia el usuario
+      if (unsubPerfil) { unsubPerfil(); unsubPerfil = null; }
+
       if (!firebaseUser) {
         setUser(null);
         setPerfil(null);
         return;
       }
+
       setUser(firebaseUser);
-      // Escuchar perfil en tiempo real
+
       const ref = doc(db, "usuarios", firebaseUser.uid);
-      const unsubPerfil = onSnapshot(ref, (snap) => {
-        if (snap.exists()) setPerfil({ uid: snap.id, ...snap.data() });
-        else setPerfil(null);
-      });
-      return () => unsubPerfil();
+      unsubPerfil = onSnapshot(ref,
+        (snap) => {
+          if (snap.exists()) {
+            setPerfil({ uid: snap.id, ...snap.data() });
+          } else {
+            // El usuario existe en Auth pero NO en Firestore
+            // (caso del profe recién creado que no tiene documento todavía)
+            setPerfil(null);
+          }
+        },
+        (error) => {
+          console.error("Error leyendo perfil:", error);
+          setPerfil(null);
+        }
+      );
     });
-    return () => unsub();
+
+    return () => {
+      unsubAuth();
+      if (unsubPerfil) unsubPerfil();
+    };
   }, []);
 
   return (
