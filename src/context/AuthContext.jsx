@@ -7,13 +7,12 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined);
-  const [perfil, setPerfil] = useState(undefined); // undefined = cargando, null = no existe
+  const [perfil, setPerfil] = useState(undefined);
 
   useEffect(() => {
     let unsubPerfil = null;
 
     const unsubAuth = onAuthStateChanged(auth, (firebaseUser) => {
-      // Limpiar listener anterior si cambia el usuario
       if (unsubPerfil) { unsubPerfil(); unsubPerfil = null; }
 
       if (!firebaseUser) {
@@ -23,6 +22,7 @@ export function AuthProvider({ children }) {
       }
 
       setUser(firebaseUser);
+      setPerfil(undefined); // resetear mientras carga
 
       const ref = doc(db, "usuarios", firebaseUser.uid);
       unsubPerfil = onSnapshot(ref,
@@ -30,14 +30,19 @@ export function AuthProvider({ children }) {
           if (snap.exists()) {
             setPerfil({ uid: snap.id, ...snap.data() });
           } else {
-            // El usuario existe en Auth pero NO en Firestore
-            // (caso del profe recién creado que no tiene documento todavía)
-            setPerfil(null);
+            // Esperar 3 segundos antes de declarar que no existe
+            // (Firestore puede tardar en devolver el primer snapshot)
+            setTimeout(() => {
+              setPerfil((prev) => {
+                if (prev === undefined) return null;
+                return prev;
+              });
+            }, 3000);
           }
         },
         (error) => {
           console.error("Error leyendo perfil:", error);
-          setPerfil(null);
+          setTimeout(() => setPerfil(null), 3000);
         }
       );
     });
