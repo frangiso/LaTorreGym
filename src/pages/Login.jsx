@@ -2,7 +2,7 @@ import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
 import { useNavigate, Link } from "react-router-dom";
-import LtLayout from "../components/LtLayout";
+import LtLogo from "../components/LtLogo";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -26,32 +26,78 @@ export default function Login() {
   }
 
   return (
-    <LtLayout centrado>
-      <div className="lt-card" style={{ maxWidth: 380, width: "100%", margin: "0 auto" }}>
-        <h2 className="lt-heading">Iniciar sesión</h2>
-        <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{
+      minHeight: "100vh", background: "#111",
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      padding: "24px 16px"
+    }}>
+      {/* Logo grande al inicio */}
+      <div style={{ marginBottom: 40 }}>
+        <LtLogo size="lg" />
+      </div>
+
+      {/* Card de login */}
+      <div style={{
+        background: "#1a1a1a", borderRadius: 16,
+        border: "1px solid #2a2a2a", padding: "32px 28px",
+        width: "100%", maxWidth: 380
+      }}>
+        <h2 style={{ color: "#fff", fontSize: 18, fontWeight: 500, margin: "0 0 24px", textAlign: "center" }}>
+          Iniciar sesión
+        </h2>
+        <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
-            <label className="lt-label">Email</label>
-            <input className="lt-input" type="email" value={email}
-              onChange={e => setEmail(e.target.value)} required placeholder="tu@email.com" />
+            <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 5 }}>Email</label>
+            <input
+              type="email" value={email} onChange={e => setEmail(e.target.value)}
+              required placeholder="tu@email.com"
+              style={{
+                width: "100%", padding: "10px 14px", background: "#111",
+                border: "1px solid #333", borderRadius: 8, fontSize: 14,
+                color: "#fff", outline: "none", boxSizing: "border-box"
+              }}
+              onFocus={e => e.target.style.borderColor = "#F5C400"}
+              onBlur={e => e.target.style.borderColor = "#333"}
+            />
           </div>
           <div>
-            <label className="lt-label">Contraseña</label>
-            <input className="lt-input" type="password" value={password}
-              onChange={e => setPassword(e.target.value)} required placeholder="••••••••" />
+            <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 5 }}>Contraseña</label>
+            <input
+              type="password" value={password} onChange={e => setPassword(e.target.value)}
+              required placeholder="••••••••"
+              style={{
+                width: "100%", padding: "10px 14px", background: "#111",
+                border: "1px solid #333", borderRadius: 8, fontSize: 14,
+                color: "#fff", outline: "none", boxSizing: "border-box"
+              }}
+              onFocus={e => e.target.style.borderColor = "#F5C400"}
+              onBlur={e => e.target.style.borderColor = "#333"}
+            />
           </div>
-          {error && <p className="lt-error">{error}</p>}
-          <button className="lt-btn-primary" type="submit" disabled={loading}>
+          {error && (
+            <p style={{ fontSize: 13, color: "#fc8181", background: "#2d1515", borderRadius: 6, padding: "8px 12px", margin: 0 }}>
+              {error}
+            </p>
+          )}
+          <button type="submit" disabled={loading}
+            style={{
+              width: "100%", background: loading ? "#c9a000" : "#F5C400",
+              color: "#111", border: "none", borderRadius: 10,
+              padding: "13px", fontSize: 15, fontWeight: 700,
+              cursor: loading ? "not-allowed" : "pointer", marginTop: 4,
+              letterSpacing: "0.02em"
+            }}>
             {loading ? "Ingresando..." : "Ingresar"}
           </button>
         </form>
-        <p style={{ textAlign: "center", marginTop: 16, fontSize: 13, color: "#888" }}>
+        <p style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "#555" }}>
           ¿No tenés cuenta?{" "}
-          <Link to="/register" style={{ color: "#F5C400", textDecoration: "none" }}>
+          <Link to="/register" style={{ color: "#F5C400", textDecoration: "none", fontWeight: 500 }}>
             Registrate
           </Link>
         </p>
       </div>
-    </LtLayout>
+    </div>
   );
 }
