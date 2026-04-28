@@ -1,0 +1,61 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: #f7f7f7;
+  color: #111;
+}
+
+/* Inputs */
+.lt-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 0.5px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #111;
+  background: #fff;
+  transition: border-color 0.15s;
+  outline: none;
+}
+.lt-input:focus { border-color: #F5C400; box-shadow: 0 0 0 2px rgba(245, 196, 0, 0.15); }
+.lt-input::placeholder { color: #bbb; }
+
+/* Labels */
+.lt-label { font-size: 12px; color: #888; display: block; margin-bottom: 4px; }
+
+/* Botones */
+.lt-btn-primary {
+  width: 100%;
+  background: #F5C400;
+  color: #111;
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.lt-btn-primary:hover { opacity: 0.92; }
+.lt-btn-primary:disabled { background: #e0e0e0; color: #aaa; cursor: not-allowed; }
+
+/* Cards */
+.lt-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 0.5px solid #e0e0e0;
+  padding: 28px 24px;
+}
+
+/* Headings */
+.lt-heading { font-size: 20px; font-weight: 500; color: #111; margin-bottom: 20px; }
+
+/* Errors */
+.lt-error { font-size: 13px; color: #dc2626; background: #fee2e2; border-radius: 6px; padding: 8px 12px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 3px; }
