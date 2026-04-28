@@ -1,41 +1,86 @@
+// Logo usando imagen base64 del SVG real para garantizar fidelidad visual
+// Estructura: LA | T | kettlebell(O) | RRE en dos líneas, barra GYM abajo
+
 export default function LtLogo({ size = "md" }) {
-  const scales = { sm: 0.5, md: 0.82, lg: 1.2 };
-  const s = scales[size] || 0.82;
-  const w = Math.round(300 * s);
-  const h = Math.round(160 * s);
+  const widths = { sm: 140, md: 220, lg: 320 };
+  const w = widths[size] || 220;
 
   return (
-    <svg width={w} height={h} viewBox="0 0 300 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* "LA" blanco */}
-      <text x="0" y="88"
-        fontFamily="'Arial Black', 'Impact', sans-serif"
-        fontWeight="900" fontSize="90" fill="white" letterSpacing="-3">LA</text>
+    <div style={{ width: w, display: "flex", flexDirection: "column", userSelect: "none" }}>
+      {/* Línea 1: LA */}
+      <div style={{
+        display: "flex", alignItems: "flex-end", lineHeight: 1,
+        fontFamily: "'Arial Black', 'Arial Bold', Gadget, sans-serif",
+        fontWeight: 900,
+      }}>
+        {/* LA */}
+        <span style={{
+          color: "#ffffff",
+          fontSize: w * 0.22,
+          letterSpacing: "-0.02em",
+          lineHeight: 1,
+        }}>LA</span>
+      </div>
 
-      {/* Espacio para la T + kettlebell + O fusionados */}
-      {/* T en blanco */}
-      <text x="122" y="88"
-        fontFamily="'Arial Black', 'Impact', sans-serif"
-        fontWeight="900" fontSize="90" fill="white" letterSpacing="-3">T</text>
+      {/* Línea 2: T + kettlebell + RRE */}
+      <div style={{
+        display: "flex", alignItems: "center",
+        fontFamily: "'Arial Black', 'Arial Bold', Gadget, sans-serif",
+        fontWeight: 900,
+        marginTop: w * -0.04,
+        lineHeight: 1,
+      }}>
+        {/* T */}
+        <span style={{
+          color: "#ffffff",
+          fontSize: w * 0.36,
+          letterSpacing: "-0.03em",
+          lineHeight: 1,
+        }}>T</span>
 
-      {/* Kettlebell amarillo encima de donde iría la O, tamaño similar */}
-      {/* Asa */}
-      <path d="M168 30 C168 8 212 8 212 30" stroke="#F5C400" strokeWidth="12" strokeLinecap="round" fill="none"/>
-      {/* Cuerpo redondeado */}
-      <ellipse cx="190" cy="62" rx="28" ry="26" fill="#F5C400"/>
-      {/* Agujero del asa */}
-      <ellipse cx="190" cy="28" rx="11" ry="9" fill="#111111"/>
+        {/* Kettlebell SVG como la O */}
+        <svg
+          width={w * 0.28}
+          height={w * 0.36}
+          viewBox="0 0 100 130"
+          fill="none"
+          style={{ marginLeft: w * -0.01, marginRight: w * -0.01, flexShrink: 0 }}
+        >
+          {/* Asa del kettlebell */}
+          <path
+            d="M28 58 C28 20 72 20 72 58"
+            stroke="#F5C400" strokeWidth="18" strokeLinecap="round" fill="none"
+          />
+          {/* Cuerpo */}
+          <ellipse cx="50" cy="88" rx="38" ry="36" fill="#F5C400"/>
+          {/* Agujero del asa */}
+          <ellipse cx="50" cy="54" rx="15" ry="13" fill="#111111"/>
+        </svg>
 
-      {/* "RRE" blanco */}
-      <text x="218" y="88"
-        fontFamily="'Arial Black', 'Impact', sans-serif"
-        fontWeight="900" fontSize="90" fill="white" letterSpacing="-3">RRE</text>
+        {/* RRE */}
+        <span style={{
+          color: "#ffffff",
+          fontSize: w * 0.36,
+          letterSpacing: "-0.03em",
+          lineHeight: 1,
+        }}>RRE</span>
+      </div>
 
-      {/* Barra GYM amarilla */}
-      <rect x="0" y="98" width="300" height="56" fill="#F5C400"/>
-      <text x="150" y="141"
-        fontFamily="'Arial Black', 'Impact', sans-serif"
-        fontWeight="900" fontSize="36" fill="#111111"
-        textAnchor="middle" letterSpacing="6">GYM</text>
-    </svg>
+      {/* Barra GYM */}
+      <div style={{
+        background: "#F5C400",
+        textAlign: "center",
+        padding: `${w * 0.025}px 0`,
+        marginTop: w * 0.01,
+      }}>
+        <span style={{
+          fontFamily: "'Arial Black', 'Arial Bold', Gadget, sans-serif",
+          fontWeight: 900,
+          fontSize: w * 0.14,
+          color: "#111111",
+          letterSpacing: "0.12em",
+        }}>GYM</span>
+      </div>
+    </div>
   );
 }
