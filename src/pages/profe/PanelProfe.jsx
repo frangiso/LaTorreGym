@@ -21,10 +21,10 @@ async function autoSeed() {
       whatsapp: "",
       reglamento: [],
       planes: [
-        { id: "2dias",  nombre: "2 días por semana",          precioTransferencia: 45000, precioEfectivo: 40000, diasSemana: 2 },
-        { id: "3dias",  nombre: "3 días por semana",          precioTransferencia: 48000, precioEfectivo: 43000, diasSemana: 3 },
-        { id: "lv",     nombre: "Lunes a viernes + sábados",  precioTransferencia: 55000, precioEfectivo: 50000, diasSemana: 6 },
-        { id: "suelta", nombre: "Clase suelta (1 día)",       precioTransferencia: 10000, precioEfectivo: 10000, diasSemana: 1 },
+        { id: "2dias",  nombre: "2 dias por semana",          precioTransferencia: 45000, precioEfectivo: 40000, diasSemana: 2 },
+        { id: "3dias",  nombre: "3 dias por semana",          precioTransferencia: 48000, precioEfectivo: 43000, diasSemana: 3 },
+        { id: "lv",     nombre: "Lunes a viernes + sabados",  precioTransferencia: 55000, precioEfectivo: 50000, diasSemana: 6 },
+        { id: "suelta", nombre: "Clase suelta (1 dia)",       precioTransferencia: 10000, precioEfectivo: 10000, diasSemana: 1 },
       ],
     });
   }
@@ -35,13 +35,15 @@ async function autoSeed() {
     const slots = [];
     for (const dia of DIAS_LV) {
       for (let h = 7; h <= 22; h++) {
-        const hora = `${String(h).padStart(2,"0")}:00`;
-        slots.push({ id: `${dia}_${hora.replace(":",")}`, dia, hora, cupo: 15 });
+        const hora = String(h).padStart(2, "0") + ":00";
+        const slotId = dia + "_" + hora.replace(":", "");
+        slots.push({ id: slotId, dia, hora, cupo: 15 });
       }
     }
     for (let h = 8; h <= 13; h++) {
-      const hora = `${String(h).padStart(2,"0")}:00`;
-      slots.push({ id: `SABADO_${hora.replace(":",")}`, dia: "SABADO", hora, cupo: 15 });
+      const hora = String(h).padStart(2, "0") + ":00";
+      const slotId = "SABADO_" + hora.replace(":", "");
+      slots.push({ id: slotId, dia: "SABADO", hora, cupo: 15 });
     }
     const CHUNK = 400;
     for (let i = 0; i < slots.length; i += CHUNK) {
