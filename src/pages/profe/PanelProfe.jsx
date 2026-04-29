@@ -10,6 +10,7 @@ import GrillaSemanal from "./GrillaSemanal";
 import PanelAlumnos from "./PanelAlumnos";
 import PagosPendientes from "./PagosPendientes";
 import ConfigGimnasio from "./ConfigGimnasio";
+import Rutinas from "./Rutinas";
 
 async function autoSeed() {
   const configRef = doc(db, "config", "gimnasio");
@@ -59,6 +60,7 @@ const TABS = [
   { key: "grilla",    label: "Grilla" },
   { key: "alumnos",   label: "Alumnos" },
   { key: "pagos",     label: "Pagos" },
+  { key: "rutinas",   label: "Rutinas" },
   { key: "config",    label: "Config" },
 ];
 
@@ -113,6 +115,7 @@ export default function PanelProfe() {
         {tab === "grilla"    && <GrillaSemanal />}
         {tab === "alumnos"   && <PanelAlumnos />}
         {tab === "pagos"     && <PagosPendientes />}
+        {tab === "rutinas"   && <Rutinas />}
         {tab === "config"    && <ConfigGimnasio />}
       </div>
     </div>
