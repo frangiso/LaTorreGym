@@ -1,3 +1,4 @@
+import MisRutinas from "./MisRutinas";
 import { useEffect, useState } from "react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../../firebase";
@@ -49,6 +50,7 @@ export default function PanelAlumno() {
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState(null);
   const [slotPendiente, setSlotPendiente] = useState(null);
+  const [vistaAlumno, setVistaAlumno] = useState("grilla"); // grilla | rutinas
   const [misReservasDelMes, setMisReservasDelMes] = useState(0);
 
   const inicioSemana = getInicioSemana(semanaOffset);
@@ -190,6 +192,24 @@ export default function PanelAlumno() {
       <LtHeader rol="alumno" onLogout={() => signOut(auth).then(() => navigate("/login"))} />
 
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "24px 16px 48px" }}>
+
+        {/* Tabs alumno */}
+        <div style={{ background: "#fff", border: "0.5px solid #e0e0e0", borderRadius: 10, display: "inline-flex", marginBottom: 20, overflow: "hidden" }}>
+          {[["grilla","Turnos"], ["rutinas","Mis rutinas"]].map(([k, l]) => (
+            <button key={k} onClick={() => setVistaAlumno(k)}
+              style={{
+                background: vistaAlumno === k ? "#111" : "transparent",
+                color: vistaAlumno === k ? "#fff" : "#888",
+                border: "none", padding: "8px 20px", fontSize: 13,
+                fontWeight: vistaAlumno === k ? 500 : 400, cursor: "pointer"
+              }}>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        {vistaAlumno === "rutinas" && <MisRutinas />}
+        {vistaAlumno === "grilla" && <>
 
         {/* Info plan */}
         <div style={{ background: "#fff", border: "0.5px solid #e0e0e0", borderRadius: 12, padding: "16px 20px", marginBottom: 16, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
@@ -369,6 +389,7 @@ export default function PanelAlumno() {
         <p style={{ fontSize: 12, color: "#aaa", marginTop: 8 }}>
           Podes reservar y cancelar hasta 2 horas antes de la clase.
         </p>
+        </>}
       </div>
     </div>
   );
