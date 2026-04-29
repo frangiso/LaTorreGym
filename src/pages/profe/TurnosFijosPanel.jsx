@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, doc, updateDoc, addDoc, getDocs, query, where, serverTimestamp } from "firebase/firestore";
+import { collection, onSnapshot, doc, getDoc, updateDoc, addDoc, getDocs, query, where, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase";
 import { crearReservasFijas, borrarReservasFijas } from "../../reservasFijas";
 
@@ -39,10 +39,10 @@ export default function TurnosFijosPanel() {
 
   // Cargar planes
   useEffect(()=>{
-    getDocs(doc(db,"config","gimnasio")).catch(()=>{});
-    const unsub = onSnapshot(doc(db,"config","gimnasio"), snap=>{
+    // Cargar planes desde config
+    getDoc(doc(db,"config","gimnasio")).then(snap=>{
       if(snap.exists()) setPlanes(snap.data().planes||[]);
-    });
+    }).catch(()=>{});
     return ()=>unsub();
   },[]);
 
