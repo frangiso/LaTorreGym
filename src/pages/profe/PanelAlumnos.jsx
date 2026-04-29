@@ -157,6 +157,7 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
       metodoPago:         form.metodoPago,
       clasesUsadasMes:    Number(form.clasesUsadasMes),
       turnosFijos,
+      turnosFijosEstado: turnosFijos.length > 0 ? "aprobado" : null,
     };
 
     if (form.planId && form.planId !== a.planId) {
@@ -166,10 +167,12 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
     }
 
     await updateDoc(doc(db, "usuarios", a.uid), updates);
-    // Si se aprobaron turnos fijos, generar reservas automaticamente
-    if (turnosFijos.length > 0 && updates.turnosFijosEstado !== "rechazado") {
+    // Si hay turnos fijos, generar reservas automaticamente
+    if (turnosFijos.length > 0) {
       await generarReservasFijas({
-        ...a, ...updates,
+        uid: a.uid,
+        nombre: updates.nombre,
+        apellido: updates.apellido,
         turnosFijos,
         turnosFijosEstado: "aprobado",
       }, 4);
