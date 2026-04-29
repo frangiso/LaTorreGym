@@ -291,4 +291,4 @@ export default function SolicitarTurnosFijos({ perfil, user, reservasPorSlot = {
   }
 
   return null;
-}i
+}
