@@ -86,34 +86,44 @@ export default function SolicitarTurnosFijos({ perfil, user }) {
   const esSuelta    = planId === "suelta";
   const recUsadas   = perfil?.recuperacionesUsadas ?? 0;
 
-  // Escuchar ocupacion en tiempo real de todas las fechas relevantes
+  // Escuchar ocupacion en tiempo real
   useEffect(() => {
     if (!planId || esSuelta || cantMax === 0) return;
-    const fechasTodas = DIAS.flatMap(d => getProximasFechas(d,4));
-    const unique = [...new Set(fechasTodas)];
-    // Chunks de 30 para el limite de Firestore
-    const chunks = [];
-    for (let i=0; i<unique.length; i+=30) chunks.push(unique.slice(i,i+30));
-    const unsubs = chunks.map(chunk => {
-      const q = query(collection(db,"reservas"), where("fecha","in",chunk));
-      return onSnapshot(q, snap => {
+
+    // Fechas de las proximas 4 semanas
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const dow = hoy.getDay();
+    const lunes = new Date(hoy);
+    lunes.setDate(hoy.getDate() - (dow === 0 ? 6 : dow - 1));
+    const fechas = [];
+    for (let s = 0; s < 4; s++) {
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(lunes);
+        d.setDate(lunes.getDate() + s * 7 + i);
+        fechas.push(d.toISOString().split("T")[0]);
+      }
+    }
+
+    const unsubscribers = [];
+    for (let i = 0; i < fechas.length; i += 7) {
+      const chunk = fechas.slice(i, i + 7);
+      const q = query(collection(db, "reservas"), where("fecha", "in", chunk));
+      const unsub = onSnapshot(q, snap => {
         setOcupacion(prev => {
-          const next = {...prev};
-          // Limpiar las claves de este chunk
+          const conteos = { ...prev };
           snap.docs.forEach(d => {
             const r = d.data();
-            next[r.dia+"_"+r.hora.replace(":","")]  = 0;
+            const k = r.dia + "_" + r.hora.replace(":", "");
+            conteos[k] = (conteos[k] || 0) + 1;
           });
-          snap.docs.forEach(d => {
-            const r = d.data();
-            const k = r.dia+"_"+r.hora.replace(":","");
-            next[k] = (next[k]||0)+1;
-          });
-          return next;
+          return conteos;
         });
+      }, err => {
+        console.error("Error ocupacion alumno:", err.message);
       });
-    });
-    return () => unsubs.forEach(u => u());
+      unsubscribers.push(unsub);
+    }
+    return () => { unsubscribers.forEach(fn => fn()); };
   }, [planId]);
 
   // Pre-cargar seleccionados con los turnos actuales al editar
