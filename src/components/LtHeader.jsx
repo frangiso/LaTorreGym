@@ -5,39 +5,28 @@ export default function LtHeader({ rol, onLogout }) {
     <header style={{
       background: "#111",
       borderBottom: "1px solid #222",
-      padding: "0 28px",
-      height: 62,
+      padding: "0 16px",
+      height: 56,
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
     }}>
-      {/* Logo */}
       <LtLogo size="sm" />
 
-      {/* Derecha: rol + cerrar sesion */}
-      <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-        {rol && (
-          <span style={{
-            fontSize: 13,
-            color: "#ffffff",
-            opacity: 0.7,
-          }}>
-            {rol === "profe" ? "Panel profesional" : "Mi cuenta"}
-          </span>
-        )}
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         {onLogout && (
           <button onClick={onLogout}
             style={{
               background: "transparent",
-              border: "1px solid #444",
+              border: "1px solid #333",
               borderRadius: 7,
-              padding: "6px 16px",
-              color: "#ffffff",
+              padding: "6px 14px",
+              color: "#fff",
               fontSize: 13,
               cursor: "pointer",
-              letterSpacing: "0.01em",
+              whiteSpace: "nowrap",
             }}>
-            Cerrar sesión
+            Salir
           </button>
         )}
       </div>
