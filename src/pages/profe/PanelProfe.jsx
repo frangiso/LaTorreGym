@@ -22,14 +22,13 @@ async function autoSeed() {
       whatsapp: "",
       reglamento: [],
       planes: [
-        { id: "2dias",  nombre: "2 dias por semana",          precioTransferencia: 45000, precioEfectivo: 40000, diasSemana: 2 },
-        { id: "3dias",  nombre: "3 dias por semana",          precioTransferencia: 48000, precioEfectivo: 43000, diasSemana: 3 },
-        { id: "lv",     nombre: "Lunes a viernes + sabados",  precioTransferencia: 55000, precioEfectivo: 50000, diasSemana: 6 },
-        { id: "suelta", nombre: "Clase suelta (1 dia)",       precioTransferencia: 10000, precioEfectivo: 10000, diasSemana: 1 },
+        { id: "2dias",  nombre: "2 dias por semana",         precioTransferencia: 45000, precioEfectivo: 40000, diasSemana: 2 },
+        { id: "3dias",  nombre: "3 dias por semana",         precioTransferencia: 48000, precioEfectivo: 43000, diasSemana: 3 },
+        { id: "lv",     nombre: "Lunes a viernes + sabados", precioTransferencia: 55000, precioEfectivo: 50000, diasSemana: 6 },
+        { id: "suelta", nombre: "Clase suelta (1 dia)",      precioTransferencia: 10000, precioEfectivo: 10000, diasSemana: 1 },
       ],
     });
   }
-
   const slotsSnap = await getDocs(collection(db, "slots"));
   if (slotsSnap.empty) {
     const DIAS_LV = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES"];
@@ -37,14 +36,12 @@ async function autoSeed() {
     for (const dia of DIAS_LV) {
       for (let h = 7; h <= 22; h++) {
         const hora = String(h).padStart(2, "0") + ":00";
-        const slotId = dia + "_" + hora.replace(":", "");
-        slots.push({ id: slotId, dia, hora, cupo: 15 });
+        slots.push({ id: dia + "_" + hora.replace(":", ""), dia, hora, cupo: 15 });
       }
     }
     for (let h = 8; h <= 13; h++) {
       const hora = String(h).padStart(2, "0") + ":00";
-      const slotId = "SABADO_" + hora.replace(":", "");
-      slots.push({ id: slotId, dia: "SABADO", hora, cupo: 15 });
+      slots.push({ id: "SABADO_" + hora.replace(":", ""), dia: "SABADO", hora, cupo: 15 });
     }
     const CHUNK = 400;
     for (let i = 0; i < slots.length; i += CHUNK) {
@@ -56,12 +53,64 @@ async function autoSeed() {
 }
 
 const TABS = [
-  { key: "dashboard", label: "Hoy" },
-  { key: "grilla",    label: "Grilla" },
-  { key: "alumnos",   label: "Alumnos" },
-  { key: "pagos",     label: "Pagos" },
-  { key: "rutinas",   label: "Rutinas" },
-  { key: "config",    label: "Config" },
+  {
+    key: "dashboard", label: "Hoy",
+    icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="3" width="7" height="7" rx="1.5" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8"/>
+        <rect x="14" y="3" width="7" height="7" rx="1.5" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8"/>
+        <rect x="3" y="14" width="7" height="7" rx="1.5" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8"/>
+        <rect x="14" y="14" width="7" height="7" rx="1.5" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8"/>
+      </svg>
+    )
+  },
+  {
+    key: "grilla", label: "Grilla",
+    icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="4" width="18" height="16" rx="2" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8"/>
+        <path d="M3 9h18M8 4v16" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8" strokeLinecap="round"/>
+      </svg>
+    )
+  },
+  {
+    key: "alumnos", label: "Alumnos",
+    icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <circle cx="9" cy="7" r="3.5" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8"/>
+        <path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8" strokeLinecap="round"/>
+        <path d="M19 8v6M22 11h-6" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8" strokeLinecap="round"/>
+      </svg>
+    )
+  },
+  {
+    key: "pagos", label: "Pagos",
+    icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="6" width="20" height="13" rx="2" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8"/>
+        <path d="M2 10h20" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8"/>
+        <circle cx="7" cy="15" r="1.5" fill={active ? "#F5C400" : "#888"}/>
+      </svg>
+    )
+  },
+  {
+    key: "rutinas", label: "Rutinas",
+    icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M4 6h16M4 10h10M4 14h12M4 18h8" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8" strokeLinecap="round"/>
+      </svg>
+    )
+  },
+  {
+    key: "config", label: "Config",
+    icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="3" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8"/>
+        <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+          stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8" strokeLinecap="round"/>
+      </svg>
+    )
+  },
 ];
 
 export default function PanelProfe() {
@@ -88,29 +137,19 @@ export default function PanelProfe() {
     );
   }
 
-  return (
-    <div style={{ minHeight: "100vh", background: "#f7f7f7" }}>
-      <LtHeader rol="profe" onLogout={() => signOut(auth).then(() => navigate("/login"))} />
+  const tabActual = TABS.find(t => t.key === tab);
 
-      <div style={{ background: "#fff", borderBottom: "0.5px solid #e0e0e0" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 16px", display: "flex", gap: 2 }}>
-          {TABS.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              style={{
-                background: "transparent", border: "none",
-                borderBottom: tab === t.key ? "2px solid #F5C400" : "2px solid transparent",
-                padding: "14px 18px", fontSize: 14,
-                fontWeight: tab === t.key ? 500 : 400,
-                color: tab === t.key ? "#111" : "#888",
-                cursor: "pointer", transition: "all 0.15s"
-              }}>
-              {t.label}
-            </button>
-          ))}
-        </div>
+  return (
+    <div style={{ minHeight: "100vh", background: "#f7f7f7", paddingBottom: 72 }}>
+      <LtHeader onLogout={() => signOut(auth).then(() => navigate("/login"))} />
+
+      {/* Titulo de seccion */}
+      <div style={{ background: "#fff", borderBottom: "0.5px solid #e0e0e0", padding: "10px 16px" }}>
+        <span style={{ fontSize: 15, fontWeight: 500, color: "#111" }}>{tabActual?.label}</span>
       </div>
 
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 16px" }}>
+      {/* Contenido */}
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "20px 14px" }}>
         {tab === "dashboard" && <Dashboard />}
         {tab === "grilla"    && <GrillaSemanal />}
         {tab === "alumnos"   && <PanelAlumnos />}
@@ -118,6 +157,33 @@ export default function PanelProfe() {
         {tab === "rutinas"   && <Rutinas />}
         {tab === "config"    && <ConfigGimnasio />}
       </div>
+
+      {/* Bottom bar — fija abajo */}
+      <nav style={{
+        position: "fixed", bottom: 0, left: 0, right: 0,
+        background: "#111", borderTop: "1px solid #222",
+        display: "flex", height: 64, zIndex: 50,
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}>
+        {TABS.map(t => {
+          const active = tab === t.key;
+          return (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              style={{
+                flex: 1, background: "transparent", border: "none",
+                display: "flex", flexDirection: "column", alignItems: "center",
+                justifyContent: "center", gap: 3, cursor: "pointer",
+                borderTop: active ? "2px solid #F5C400" : "2px solid transparent",
+                transition: "border 0.15s",
+              }}>
+              {t.icon(active)}
+              <span style={{ fontSize: 10, color: active ? "#F5C400" : "#666", fontWeight: active ? 500 : 400 }}>
+                {t.label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }
