@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 import LtHeader from "../../components/LtHeader";
 import MisRutinas from "./MisRutinas";
+import SolicitarTurnosFijos from "./SolicitarTurnosFijos";
 
 const DIAS = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
 const DIAS_LABEL = { LUNES:"Lunes", MARTES:"Martes", MIERCOLES:"Miercoles", JUEVES:"Jueves", VIERNES:"Viernes", SABADO:"Sabado" };
@@ -114,11 +115,28 @@ export default function PanelAlumno() {
     }
     setProcesando(key);
     try {
+      const esTurnoFijo = (perfil?.turnosFijos || []).some(t => t.dia === dia && t.hora === hora);
+      const esRecuperacion = perfil?.turnosFijosEstado === "aprobado" && !esTurnoFijo;
+      if (esRecuperacion) {
+        const recUsadas = perfil?.recuperacionesUsadas ?? 0;
+        if (recUsadas >= 2) {
+          alert("Ya usaste tus 2 clases de recuperacion de este mes.");
+          setProcesando(null);
+          return;
+        }
+      }
       await addDoc(collection(db, "reservas"), {
         alumnoId: user.uid,
         nombreAlumno: perfil.nombre + " " + perfil.apellido,
-        dia, hora, fecha, creadoEn: serverTimestamp(),
+        dia, hora, fecha,
+        esRecuperacion: esRecuperacion || false,
+        creadoEn: serverTimestamp(),
       });
+      if (esRecuperacion) {
+        await updateDoc(doc(db, "usuarios", user.uid), {
+          recuperacionesUsadas: (perfil.recuperacionesUsadas || 0) + 1,
+        });
+      }
     } finally { setProcesando(null); }
   }
 
@@ -183,7 +201,7 @@ export default function PanelAlumno() {
 
         {/* Tabs */}
         <div style={{ display: "flex", background: "#fff", border: "0.5px solid #e0e0e0", borderRadius: 10, marginBottom: 16, overflow: "hidden" }}>
-          {[["turnos","Turnos"], ["rutinas","Mis rutinas"]].map(([k, l]) => (
+          {[["turnos","Turnos"], ["fijos","Turnos fijos"], ["rutinas","Mis rutinas"]].map(([k, l]) => (
             <button key={k} onClick={() => setVistaAlumno(k)}
               style={{
                 flex: 1, background: vistaAlumno === k ? "#111" : "transparent",
@@ -197,6 +215,7 @@ export default function PanelAlumno() {
         </div>
 
         {vistaAlumno === "rutinas" && <MisRutinas />}
+        {vistaAlumno === "fijos" && <SolicitarTurnosFijos perfil={perfil} user={user} reservasPorSlot={reservasPorSlot} feriados={feriados} />}
 
         {vistaAlumno === "turnos" && (<>
 
