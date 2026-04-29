@@ -119,7 +119,8 @@ export default function Dashboard() {
                       </div>
                       <span style={{ fontSize: 13, color: "#111" }}>{r.nombreAlumno}</span>
                     </div>
-                    <div style={{ display: "flex", gap: 6 }}>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <CancelarBtn reservaId={r.id} />
                       <button
                         onClick={() => marcarAsistencia(r.id, r.asistio === true ? null : true)}
                         style={{
@@ -151,6 +152,39 @@ export default function Dashboard() {
 
       {modalAgregar && <ModalAgregarAlumno onClose={() => setModalAgregar(false)} />}
     </div>
+  );
+}
+
+function CancelarBtn({ reservaId, onCancelado }) {
+  const [confirm, setConfirm] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function cancelar() {
+    setLoading(true);
+    await deleteDoc(doc(db, "reservas", reservaId));
+    setLoading(false);
+    setConfirm(false);
+    if (onCancelado) onCancelado();
+  }
+
+  if (confirm) return (
+    <div style={{ display: "flex", gap: 4 }}>
+      <button onClick={cancelar} disabled={loading}
+        style={{ background: "#dc2626", color: "#fff", border: "none", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}>
+        {loading ? "..." : "Confirmar"}
+      </button>
+      <button onClick={() => setConfirm(false)}
+        style={{ background: "transparent", border: "0.5px solid #e0e0e0", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer", color: "#888" }}>
+        No
+      </button>
+    </div>
+  );
+
+  return (
+    <button onClick={() => setConfirm(true)}
+      style={{ background: "#fee2e2", color: "#dc2626", border: "none", borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}>
+      Cancelar
+    </button>
   );
 }
 
