@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc,
-  serverTimestamp, orderBy, query
+  serverTimestamp, query
 } from "firebase/firestore";
 import { db } from "../../firebase";
 
@@ -12,9 +12,11 @@ export default function Avisos() {
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
-    const q = query(collection(db, "avisos"), orderBy("creadoEn", "desc"));
+    const q = query(collection(db, "avisos"));
     const unsub = onSnapshot(q, snap => {
-      setAvisos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      lista.sort((a,b) => (b.creadoEn?.seconds||0) - (a.creadoEn?.seconds||0));
+      setAvisos(lista);
     });
     return () => unsub();
   }, []);

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   collection, query, where, onSnapshot, doc, updateDoc,
-  addDoc, deleteDoc, serverTimestamp, getDoc, orderBy
+  addDoc, deleteDoc, serverTimestamp, getDoc
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { correrMantenimiento, alumnosProximosAVencer } from "../../utils/mantenimiento";
@@ -57,15 +57,23 @@ export default function Dashboard() {
 
   // Avisos activos
   useEffect(() => {
-    const q = query(collection(db, "avisos"), where("activo", "==", true), orderBy("creadoEn", "desc"));
-    const unsub = onSnapshot(q, snap => setAvisos(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const q = query(collection(db, "avisos"));
+    const unsub = onSnapshot(q, snap => {
+      const lista = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(a => a.activo === true)
+        .sort((a,b) => (b.creadoEn?.seconds||0) - (a.creadoEn?.seconds||0));
+      setAvisos(lista);
+    });
     return () => unsub();
   }, []);
 
   // Lista de espera notificados
   useEffect(() => {
-    const q = query(collection(db, "listaEspera"), where("notificado", "==", true));
-    const unsub = onSnapshot(q, snap => setListaEspera(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const q = query(collection(db, "listaEspera"));
+    const unsub = onSnapshot(q, snap => {
+      setListaEspera(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(e => e.notificado === true));
+    });
     return () => unsub();
   }, []);
 
