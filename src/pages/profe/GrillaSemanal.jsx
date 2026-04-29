@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import ModalAgregarAlumno from "./ModalAgregarAlumno";
-import { collection, getDocs, doc, setDoc, deleteDoc, onSnapshot, query, where } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, deleteDoc, onSnapshot, query, where, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 
 const DIAS = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
@@ -214,11 +214,26 @@ export default function GrillaSemanal() {
 }
 
 function ModalSlot({ slot, onClose }) {
-  const { dia, hora, fecha, reservas } = slot;
+  const { dia, hora, fecha } = slot;
+  const [reservas, setReservas] = useState(slot.reservas || []);
+  const [cancelando, setCancelando] = useState(null);
+
+  async function cancelarReserva(reservaId) {
+    setCancelando(reservaId);
+    await deleteDoc(doc(db, "reservas", reservaId));
+    setReservas(prev => prev.filter(r => r.id !== reservaId));
+    setCancelando(null);
+  }
+
+  async function marcar(reservaId, valor) {
+    await updateDoc(doc(db, "reservas", reservaId), { asistio: valor });
+    setReservas(prev => prev.map(r => r.id === reservaId ? { ...r, asistio: valor } : r));
+  }
+
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }}
       onClick={onClose}>
-      <div style={{ background:"#fff", borderRadius:16, padding:"24px", maxWidth:420, width:"90%", maxHeight:"80vh", overflowY:"auto" }}
+      <div style={{ background:"#fff", borderRadius:16, padding:"24px", maxWidth:440, width:"90%", maxHeight:"85vh", overflowY:"auto" }}
         onClick={e => e.stopPropagation()}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:16 }}>
           <div>
@@ -237,23 +252,40 @@ function ModalSlot({ slot, onClose }) {
         {reservas.length === 0 ? (
           <p style={{ color:"#aaa", fontSize:14, textAlign:"center", padding:"16px 0" }}>Sin reservas.</p>
         ) : (
-          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-            {reservas.map((r, i) => (
-              <div key={r.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:"#f9f9f9", borderRadius:8 }}>
-                <div style={{ width:32, height:32, borderRadius:"50%", background:"#F5C400", color:"#111", fontSize:12, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                  {(r.nombreAlumno||"?").charAt(0).toUpperCase()}
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {reservas.map(r => (
+              <div key={r.id} style={{ background:"#f9f9f9", borderRadius:10, padding:"10px 12px" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                  <div style={{ width:30, height:30, borderRadius:"50%", background:"#F5C400", color:"#111", fontSize:12, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    {(r.nombreAlumno||"?").charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:13, fontWeight:500, color:"#111" }}>{r.nombreAlumno}</div>
+                    <div style={{ fontSize:11, color:"#aaa" }}>
+                      {r.esFijo ? "Turno fijo" : r.esRecuperacion ? "Recuperación" : "Reserva normal"}
+                    </div>
+                  </div>
                 </div>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontSize:13, fontWeight:500, color:"#111" }}>{r.nombreAlumno}</div>
-                </div>
-                <div style={{ display:"flex", gap:4 }}>
-                  <span style={{
-                    fontSize:11, padding:"2px 8px", borderRadius:10, fontWeight:500,
-                    background: r.asistio===true?"#dcfce7":r.asistio===false?"#fee2e2":"#f0f0f0",
-                    color: r.asistio===true?"#065f46":r.asistio===false?"#991b1b":"#888"
-                  }}>
-                    {r.asistio===true?"Presente":r.asistio===false?"Ausente":"Sin marcar"}
-                  </span>
+                {/* Asistencia */}
+                <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                  <button onClick={() => marcar(r.id, r.asistio === true ? null : true)}
+                    style={{
+                      background: r.asistio === true ? "#10b981" : "transparent",
+                      color: r.asistio === true ? "#fff" : "#10b981",
+                      border:"1px solid #10b981", borderRadius:6,
+                      padding:"4px 10px", fontSize:11, cursor:"pointer", fontWeight:500
+                    }}>✓ Presente</button>
+                  <button onClick={() => marcar(r.id, r.asistio === false ? null : false)}
+                    style={{
+                      background: r.asistio === false ? "#ef4444" : "transparent",
+                      color: r.asistio === false ? "#fff" : "#ef4444",
+                      border:"1px solid #ef4444", borderRadius:6,
+                      padding:"4px 10px", fontSize:11, cursor:"pointer"
+                    }}>✗ Ausente</button>
+                  <button onClick={() => cancelarReserva(r.id)} disabled={cancelando === r.id}
+                    style={{ background:"#fee2e2", color:"#dc2626", border:"none", borderRadius:6, padding:"4px 10px", fontSize:11, cursor:"pointer", marginLeft:"auto" }}>
+                    {cancelando === r.id ? "..." : "Cancelar turno"}
+                  </button>
                 </div>
               </div>
             ))}
