@@ -12,6 +12,7 @@ import PagosPendientes from "./PagosPendientes";
 import ConfigGimnasio from "./ConfigGimnasio";
 import Rutinas from "./Rutinas";
 import TurnosFijosPanel from "./TurnosFijosPanel";
+import Avisos from "./Avisos";
 
 async function autoSeed() {
   const configRef = doc(db, "config", "gimnasio");
@@ -112,6 +113,14 @@ const TABS = [
     )
   },
   {
+    key: "avisos", label: "Avisos",
+    icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    )
+  },
+  {
     key: "config", label: "Config",
     icon: (active) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -166,6 +175,7 @@ export default function PanelProfe() {
         {tab === "alumnos"   && <PanelAlumnos />}
         {tab === "pagos"     && <PagosPendientes />}
         {tab === "rutinas"   && <Rutinas />}
+        {tab === "avisos"    && <Avisos />}
         {tab === "config"    && <ConfigGimnasio />}
       </div>
 
