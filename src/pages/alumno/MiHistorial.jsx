@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useAuth } from "../../context/AuthContext";
 
@@ -12,11 +12,12 @@ export default function MiHistorial() {
     if (!user) return;
     const q = query(
       collection(db, "reservas"),
-      where("alumnoId", "==", user.uid),
-      orderBy("fecha", "desc")
+      where("alumnoId", "==", user.uid)
     );
     const unsub = onSnapshot(q, snap => {
-      setReservas(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      lista.sort((a, b) => b.fecha.localeCompare(a.fecha) || b.hora.localeCompare(a.hora));
+      setReservas(lista);
       setCargando(false);
     });
     return () => unsub();
