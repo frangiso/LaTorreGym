@@ -5,12 +5,20 @@ import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import {
   collection, query, where, onSnapshot, addDoc, deleteDoc,
-  doc, getDocs, serverTimestamp, updateDoc
+  doc, getDocs, serverTimestamp, updateDoc, getDoc
 } from "firebase/firestore";
 import LtHeader from "../../components/LtHeader";
 
 const DIAS = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
 const DIAS_LABEL = { LUNES:"Lun", MARTES:"Mar", MIERCOLES:"Mie", JUEVES:"Jue", VIERNES:"Vie", SABADO:"Sab" };
+
+// Clases incluidas por plan por mes (4 semanas)
+const CLASES_POR_PLAN = {
+  "2dias":  8,   // 2 x 4 semanas
+  "3dias":  12,  // 3 x 4 semanas
+  "lv":     26,  // L-V + Sab aprox
+  "suelta": 1,
+};
 
 function getInicioSemana(offset = 0) {
   const hoy = new Date();
@@ -40,13 +48,35 @@ export default function PanelAlumno() {
   const [feriados, setFeriados] = useState({});
   const [cargando, setCargando] = useState(true);
   const [procesando, setProcesando] = useState(null);
-  // Para clase suelta: slot preseleccionado esperando confirmacion
   const [slotPendiente, setSlotPendiente] = useState(null);
+  const [misReservasDelMes, setMisReservasDelMes] = useState(0);
 
   const inicioSemana = getInicioSemana(semanaOffset);
   const fechas = getFechasDeSemana(inicioSemana);
   const hoy = new Date().toISOString().split("T")[0];
-  const esSuelta = perfil?.planId === "suelta";
+  const planId = perfil?.planId || "";
+  const clasesDelPlan = CLASES_POR_PLAN[planId] ?? 999;
+  const clasesUsadas = perfil?.clasesUsadasMes ?? 0;
+  const clasesRestantes = Math.max(0, clasesDelPlan - clasesUsadas);
+  const planAgotado = clasesRestantes <= 0 && planId !== "lv";
+
+  // Contar mis reservas del mes actual
+  useEffect(() => {
+    if (!user) return;
+    const ahora = new Date();
+    const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString().split("T")[0];
+    const finMes = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).toISOString().split("T")[0];
+    const q = query(
+      collection(db, "reservas"),
+      where("alumnoId", "==", user.uid),
+      where("fecha", ">=", inicioMes),
+      where("fecha", "<=", finMes)
+    );
+    const unsub = onSnapshot(q, snap => {
+      setMisReservasDelMes(snap.size);
+    });
+    return () => unsub();
+  }, [user]);
 
   useEffect(() => {
     getDocs(collection(db, "feriados")).then(snap => {
@@ -77,14 +107,36 @@ export default function PanelAlumno() {
     return () => unsub();
   }, [semanaOffset, user]);
 
-  // Para clase suelta: el alumno selecciona el slot y aparece boton de confirmar
-  function seleccionarSlotSuelta(dia, hora, fecha) {
+  async function reservar(dia, hora, fecha) {
+    if (!user || procesando) return;
     const key = dia + "_" + hora.replace(":", "") + "_" + fecha;
-    if (misReservas[key]) return; // ya reservado
-    setSlotPendiente({ dia, hora, fecha, key });
+    if (misReservas[key]) return;
+
+    const ahora = new Date();
+    const claseDate = new Date(fecha + "T" + hora);
+    if (claseDate < ahora) { alert("Esta clase ya paso."); return; }
+    if (claseDate - ahora < 2 * 60 * 60 * 1000) { alert("Solo podes reservar hasta 2 horas antes."); return; }
+
+    // Para planes con limite o suelta: pedir confirmacion
+    if (planId !== "lv") {
+      setSlotPendiente({ dia, hora, fecha, key });
+      return;
+    }
+
+    setProcesando(key);
+    try {
+      await addDoc(collection(db, "reservas"), {
+        alumnoId: user.uid,
+        nombreAlumno: perfil.nombre + " " + perfil.apellido,
+        dia, hora, fecha, creadoEn: serverTimestamp(),
+      });
+      await updateDoc(doc(db, "usuarios", user.uid), {
+        clasesUsadasMes: (perfil.clasesUsadasMes || 0) + 1,
+      });
+    } finally { setProcesando(null); }
   }
 
-  async function confirmarClaseSuelta() {
+  async function confirmarReserva() {
     if (!slotPendiente || procesando) return;
     const { dia, hora, fecha, key } = slotPendiente;
     const ahora = new Date();
@@ -97,38 +149,20 @@ export default function PanelAlumno() {
       await addDoc(collection(db, "reservas"), {
         alumnoId: user.uid,
         nombreAlumno: perfil.nombre + " " + perfil.apellido,
-        dia, hora, fecha,
-        creadoEn: serverTimestamp(),
+        dia, hora, fecha, creadoEn: serverTimestamp(),
       });
-      // Marcar la clase suelta como usada
-      await updateDoc(doc(db, "usuarios", user.uid), {
-        claseSueltaUsada: true,
-        estado: "activo", // sigue activo pero sin mas reservas
-      });
+      const nuevasUsadas = (perfil.clasesUsadasMes || 0) + 1;
+      const updates = { clasesUsadasMes: nuevasUsadas };
+      // Si agoto el plan, volver a pendiente de pago
+      if (nuevasUsadas >= clasesDelPlan) {
+        updates.estado = "pago_pendiente";
+        updates.planId = null;
+        updates.planNombre = null;
+        updates.clasesUsadasMes = 0;
+      }
+      await updateDoc(doc(db, "usuarios", user.uid), updates);
       setSlotPendiente(null);
-    } finally {
-      setProcesando(null);
-    }
-  }
-
-  async function reservar(dia, hora, fecha) {
-    const key = dia + "_" + hora.replace(":", "") + "_" + fecha;
-    if (procesando || misReservas[key]) return;
-    const ahora = new Date();
-    const claseDate = new Date(fecha + "T" + hora);
-    if (claseDate < ahora) { alert("Esta clase ya paso."); return; }
-    if (claseDate - ahora < 2 * 60 * 60 * 1000) { alert("Solo podes reservar hasta 2 horas antes."); return; }
-    setProcesando(key);
-    try {
-      await addDoc(collection(db, "reservas"), {
-        alumnoId: user.uid,
-        nombreAlumno: perfil.nombre + " " + perfil.apellido,
-        dia, hora, fecha,
-        creadoEn: serverTimestamp(),
-      });
-    } finally {
-      setProcesando(null);
-    }
+    } finally { setProcesando(null); }
   }
 
   async function cancelar(dia, hora, fecha) {
@@ -140,22 +174,16 @@ export default function PanelAlumno() {
     setProcesando(key);
     try {
       await deleteDoc(doc(db, "reservas", reservaId));
-      // Si era clase suelta, devolver el uso
-      if (esSuelta) {
-        await updateDoc(doc(db, "usuarios", user.uid), { claseSueltaUsada: false });
-      }
-    } finally {
-      setProcesando(null);
-    }
+      await updateDoc(doc(db, "usuarios", user.uid), {
+        clasesUsadasMes: Math.max(0, (perfil.clasesUsadasMes || 0) - 1),
+      });
+    } finally { setProcesando(null); }
   }
 
   const fmt = iso => { const [,m,d] = iso.split("-"); return d + "/" + m; };
   const vence = perfil?.fechaVencimiento
     ? new Date(perfil.fechaVencimiento.toDate?.() || perfil.fechaVencimiento).toLocaleDateString("es-AR")
     : null;
-
-  const claseSueltaYaUsada = esSuelta && perfil?.claseSueltaUsada === true;
-  const totalMisReservas = Object.keys(misReservas).length;
 
   return (
     <div style={{ minHeight: "100vh", background: "#f7f7f7" }}>
@@ -164,47 +192,61 @@ export default function PanelAlumno() {
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "24px 16px 48px" }}>
 
         {/* Info plan */}
-        <div style={{ background: "#fff", border: "0.5px solid #e0e0e0", borderRadius: 12, padding: "14px 18px", marginBottom: 20, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ background: "#fff", border: "0.5px solid #e0e0e0", borderRadius: 12, padding: "16px 20px", marginBottom: 16, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontSize: 12, color: "#888" }}>Tu plan</div>
             <div style={{ fontSize: 16, fontWeight: 500, color: "#111", marginTop: 2 }}>{perfil?.planNombre || "Sin plan"}</div>
           </div>
           {vence && (
-            <div style={{ textAlign: "right" }}>
+            <div>
               <div style={{ fontSize: 12, color: "#888" }}>Vence</div>
               <div style={{ fontSize: 14, fontWeight: 500, color: "#111", marginTop: 2 }}>{vence}</div>
             </div>
           )}
-          {esSuelta && (
-            <div style={{
-              background: claseSueltaYaUsada ? "#fee2e2" : "#dcfce7",
-              color: claseSueltaYaUsada ? "#991b1b" : "#065f46",
-              borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500,
-            }}>
-              {claseSueltaYaUsada ? "Clase ya utilizada" : "1 clase disponible"}
+          {planId && planId !== "lv" && (
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 12, color: "#888" }}>Clases este mes</div>
+              <div style={{ fontSize: 20, fontWeight: 500, color: clasesRestantes <= 2 ? "#f59e0b" : "#111", marginTop: 2 }}>
+                {clasesRestantes} <span style={{ fontSize: 13, color: "#aaa", fontWeight: 400 }}>/ {clasesDelPlan}</span>
+              </div>
+            </div>
+          )}
+          {planId === "lv" && (
+            <div style={{ background: "#dcfce7", color: "#065f46", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 500 }}>
+              Acceso ilimitado
             </div>
           )}
         </div>
 
-        {/* Alerta clase suelta ya usada */}
-        {claseSueltaYaUsada && (
-          <div style={{ background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: 10, padding: "12px 16px", marginBottom: 16, fontSize: 13, color: "#92400e" }}>
-            Ya usaste tu clase suelta. Para seguir entrenando, comunicate con el profe para renovar tu plan.
+        {/* Alerta plan agotado */}
+        {planAgotado && (
+          <div style={{ background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: 10, padding: "14px 18px", marginBottom: 16 }}>
+            <div style={{ fontSize: 14, fontWeight: 500, color: "#92400e", marginBottom: 4 }}>Agotaste tus clases del mes</div>
+            <div style={{ fontSize: 13, color: "#78350f" }}>Para seguir entrenando, renova tu plan. El profe lo activara cuando confirme el pago.</div>
           </div>
         )}
 
-        {/* Confirmacion clase suelta pendiente */}
+        {/* Alerta clases por agotar */}
+        {!planAgotado && clasesRestantes <= 2 && planId && planId !== "lv" && (
+          <div style={{ background: "#fff7ed", border: "1px solid #fdba74", borderRadius: 10, padding: "12px 16px", marginBottom: 16, fontSize: 13, color: "#9a3412" }}>
+            Te quedan solo {clasesRestantes} clase{clasesRestantes !== 1 ? "s" : ""} este mes.
+          </div>
+        )}
+
+        {/* Banner confirmacion */}
         {slotPendiente && (
           <div style={{ background: "#111", borderRadius: 12, padding: "16px 20px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
             <div>
-              <div style={{ color: "#F5C400", fontWeight: 500, fontSize: 14 }}>Confirmar clase suelta</div>
+              <div style={{ color: "#F5C400", fontWeight: 500, fontSize: 14 }}>Confirmar reserva</div>
               <div style={{ color: "#aaa", fontSize: 13, marginTop: 2 }}>
                 {slotPendiente.dia} {slotPendiente.hora} — {slotPendiente.fecha}
               </div>
-              <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>Esta sera tu unica clase. No podras reservar mas.</div>
+              <div style={{ color: "#666", fontSize: 12, marginTop: 4 }}>
+                Te descontara 1 clase. Te quedan {clasesRestantes - 1} despues de esta.
+              </div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={confirmarClaseSuelta} disabled={!!procesando}
+              <button onClick={confirmarReserva} disabled={!!procesando}
                 style={{ background: "#F5C400", color: "#111", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
                 Confirmar
               </button>
@@ -220,17 +262,12 @@ export default function PanelAlumno() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <h2 style={{ fontSize: 18, fontWeight: 500, margin: 0 }}>Reservar turno</h2>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button onClick={() => setSemanaOffset(o => o-1)}
-              style={{ background: "#fff", border: "0.5px solid #e0e0e0", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>←</button>
+            <button onClick={() => setSemanaOffset(o => o-1)} style={{ background: "#fff", border: "0.5px solid #e0e0e0", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>←</button>
             <span style={{ fontSize: 13, color: "#888", minWidth: 120, textAlign: "center" }}>
               {fmt(fechas["LUNES"])} — {fmt(fechas["SABADO"])}
             </span>
-            <button onClick={() => setSemanaOffset(o => o+1)}
-              style={{ background: "#fff", border: "0.5px solid #e0e0e0", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>→</button>
-            <button onClick={() => setSemanaOffset(0)}
-              style={{ background: "#F5C400", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 13, fontWeight: 500 }}>
-              Hoy
-            </button>
+            <button onClick={() => setSemanaOffset(o => o+1)} style={{ background: "#fff", border: "0.5px solid #e0e0e0", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>→</button>
+            <button onClick={() => setSemanaOffset(0)} style={{ background: "#F5C400", border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 13, fontWeight: 500 }}>Hoy</button>
           </div>
         </div>
 
@@ -274,26 +311,20 @@ export default function PanelAlumno() {
                       const lleno = ocupados >= cupo && !tengoReserva;
                       const isPast = new Date(fecha + "T" + hora) < new Date();
                       const esPendiente = slotPendiente?.key === key;
-                      const bloqueado = claseSueltaYaUsada && !tengoReserva;
-
-                      function handleClick() {
-                        if (isPast || lleno || bloqueado) return;
-                        if (tengoReserva) { cancelar(dia, hora, fecha); return; }
-                        if (esSuelta) {
-                          seleccionarSlotSuelta(dia, hora, fecha);
-                        } else {
-                          reservar(dia, hora, fecha);
-                        }
-                      }
+                      const bloqueado = planAgotado && !tengoReserva;
 
                       return (
                         <td key={dia} style={{ padding: 3 }}>
                           <button
-                            onClick={handleClick}
+                            onClick={() => {
+                              if (isPast || lleno || bloqueado || procesando === key) return;
+                              if (tengoReserva) cancelar(dia, hora, fecha);
+                              else reservar(dia, hora, fecha);
+                            }}
                             disabled={isPast || lleno || bloqueado || procesando === key}
-                            title={tengoReserva ? "Cancelar reserva" : lleno ? "Sin lugares" : "Reservar"}
                             style={{
-                              width: "100%", height: 44, borderRadius: 8, border: esPendiente ? "2px solid #F5C400" : tengoReserva ? "2px solid #F5C400" : "none",
+                              width: "100%", height: 44, borderRadius: 8,
+                              border: (esPendiente || tengoReserva) ? "2px solid #F5C400" : "none",
                               cursor: (isPast || lleno || bloqueado) ? "default" : "pointer",
                               background: isPast ? "#f5f5f5" : bloqueado ? "#f5f5f5" : esPendiente ? "#FFF8DC" : tengoReserva ? "#FFFBEA" : lleno ? "#fef3c7" : ocupados > 0 ? "#dcfce7" : "#f9f9f9",
                               display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, padding: "3px 2px"
@@ -322,7 +353,6 @@ export default function PanelAlumno() {
           </table>
         </div>
 
-        {/* Leyenda */}
         <div style={{ display: "flex", gap: 16, marginTop: 12, flexWrap: "wrap" }}>
           {[
             { color: "#FFFBEA", border: "2px solid #F5C400", label: "Mi reserva" },
@@ -337,7 +367,7 @@ export default function PanelAlumno() {
           ))}
         </div>
         <p style={{ fontSize: 12, color: "#aaa", marginTop: 8 }}>
-          {esSuelta ? "Clase suelta: selecciona un turno y confirma. Solo podes reservar 1 clase." : "Podes reservar y cancelar hasta 2 horas antes de la clase."}
+          Podes reservar y cancelar hasta 2 horas antes de la clase.
         </p>
       </div>
     </div>
