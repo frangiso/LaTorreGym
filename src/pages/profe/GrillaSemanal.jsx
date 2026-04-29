@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ModalAgregarAlumno from "./ModalAgregarAlumno";
 import { collection, getDocs, doc, setDoc, deleteDoc, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../firebase";
 
@@ -32,6 +33,7 @@ export default function GrillaSemanal() {
   const [feriados, setFeriados] = useState({});
   const [modalSlot, setModalSlot] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const [modalAgregar, setModalAgregar] = useState(false);
 
   const inicioSemana = getInicioSemana(semanaOffset);
   const fechas = getFechasDeSemana(inicioSemana);
@@ -82,6 +84,10 @@ export default function GrillaSemanal() {
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: 20 }}>
         <h2 style={{ fontSize: 18, fontWeight: 500, margin: 0 }}>Grilla semanal</h2>
         <div style={{ display:"flex", gap: 8, alignItems:"center" }}>
+          <button onClick={() => setModalAgregar(true)}
+            style={{ background:"#F5C400", color:"#111", border:"none", borderRadius:8, padding:"7px 14px", fontSize:13, fontWeight:500, cursor:"pointer" }}>
+            + Agregar alumno
+          </button>
           <button onClick={() => setSemanaOffset(o => o-1)}
             style={{ background:"#fff", border:"0.5px solid #e0e0e0", borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:14 }}>←</button>
           <span style={{ fontSize:13, color:"#888", minWidth:130, textAlign:"center" }}>
@@ -202,6 +208,7 @@ export default function GrillaSemanal() {
       </div>
 
       {modalSlot && <ModalSlot slot={modalSlot} onClose={() => setModalSlot(null)} />}
+      {modalAgregar && <ModalAgregarAlumno onClose={() => setModalAgregar(false)} />}
     </div>
   );
 }
