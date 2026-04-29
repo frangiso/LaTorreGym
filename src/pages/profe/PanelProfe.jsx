@@ -11,6 +11,7 @@ import PanelAlumnos from "./PanelAlumnos";
 import PagosPendientes from "./PagosPendientes";
 import ConfigGimnasio from "./ConfigGimnasio";
 import Rutinas from "./Rutinas";
+import TurnosFijosPanel from "./TurnosFijosPanel";
 
 async function autoSeed() {
   const configRef = doc(db, "config", "gimnasio");
@@ -70,6 +71,15 @@ const TABS = [
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
         <rect x="3" y="4" width="18" height="16" rx="2" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8"/>
         <path d="M3 9h18M8 4v16" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8" strokeLinecap="round"/>
+      </svg>
+    )
+  },
+  {
+    key: "tfijos", label: "Fijos",
+    icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8" strokeLinecap="round"/>
+        <circle cx="12" cy="12" r="3" stroke={active ? "#F5C400" : "#888"} strokeWidth="1.8"/>
       </svg>
     )
   },
@@ -152,6 +162,7 @@ export default function PanelProfe() {
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "20px 14px" }}>
         {tab === "dashboard" && <Dashboard />}
         {tab === "grilla"    && <GrillaSemanal />}
+        {tab === "tfijos"   && <TurnosFijosPanel />}
         {tab === "alumnos"   && <PanelAlumnos />}
         {tab === "pagos"     && <PagosPendientes />}
         {tab === "rutinas"   && <Rutinas />}
