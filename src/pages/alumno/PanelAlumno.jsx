@@ -5,10 +5,12 @@ import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import {
   collection, query, where, onSnapshot, addDoc, deleteDoc,
-  doc, getDocs, serverTimestamp, updateDoc
+  doc, getDocs, serverTimestamp, updateDoc, orderBy
 } from "firebase/firestore";
 import LtHeader from "../../components/LtHeader";
 import MisRutinas from "./MisRutinas";
+import MiHistorial from "./MiHistorial";
+import { agregarListaEspera, salirListaEspera } from "../../utils/listaEspera";
 import SolicitarTurnosFijos from "./SolicitarTurnosFijos";
 
 const DIAS = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
@@ -52,6 +54,8 @@ export default function PanelAlumno() {
   const [confirmando, setConfirmando]         = useState(null);
   const [diaSeleccionado, setDiaSeleccionado] = useState(null);
   const [vistaAlumno, setVistaAlumno]         = useState("turnos");
+  const [avisos, setAvisos]                   = useState([]);
+  const [enEspera, setEnEspera]               = useState({});
 
   const inicioSemana = getInicioSemana(semanaOffset);
   const fechas       = getFechasDeSemana(inicioSemana);
@@ -74,6 +78,28 @@ export default function PanelAlumno() {
     const map = [null,"LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
     setDiaSeleccionado(map[new Date().getDay()] || "LUNES");
   }, []);
+
+  // Avisos activos
+  useEffect(() => {
+    const q = query(collection(db, "avisos"), where("activo", "==", true), orderBy("creadoEn", "desc"));
+    const unsub = onSnapshot(q, snap => setAvisos(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    return () => unsub();
+  }, []);
+
+  // Lista de espera del alumno (esta semana)
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "listaEspera"), where("alumnoId", "==", user.uid));
+    const unsub = onSnapshot(q, snap => {
+      const map = {};
+      snap.docs.forEach(d => {
+        const e = d.data();
+        map[e.fecha + "_" + e.hora] = d.id;
+      });
+      setEnEspera(map);
+    });
+    return () => unsub();
+  }, [user]);
 
   useEffect(() => {
     getDocs(collection(db, "feriados")).then(snap => {
@@ -117,7 +143,7 @@ export default function PanelAlumno() {
 
     if (tengo)  return { accion: "cancelar" };
     if (pasado) return { accion: "nada", motivo: "pasado" };
-    if (lleno)  return { accion: "nada", motivo: "lleno" };
+    if (lleno)  return { accion: enEspera[fecha + "_" + hora] ? "en_espera" : "lleno", motivo: "lleno" };
 
     // CLASE SUELTA: cualquier horario libre
     if (esSuelta) {
@@ -143,6 +169,16 @@ export default function PanelAlumno() {
     const { accion } = estadoSlot(dia, hora, fecha);
     if (accion === "cancelar") { cancelar(dia, hora, fecha); return; }
     if (accion === "nada")     return;
+    if (accion === "en_espera") {
+      if (confirm("Salir de la lista de espera para " + dia + " " + hora + "?"))
+        salirListaEspera(user.uid, fecha, hora);
+      return;
+    }
+    if (accion === "lleno") {
+      if (confirm("El turno está lleno. ¿Querés anotarte en lista de espera?"))
+        agregarListaEspera(user.uid, (perfil?.nombre || "") + " " + (perfil?.apellido || ""), dia, hora, fecha);
+      return;
+    }
     setConfirmando({ dia, hora, fecha, tipo: accion });
   }
 
@@ -209,7 +245,7 @@ export default function PanelAlumno() {
 
         {/* Tabs */}
         <div style={{ display: "flex", background: "#fff", border: "0.5px solid #e0e0e0", borderRadius: 10, marginBottom: 16, overflow: "hidden" }}>
-          {[["turnos","Turnos"], ["fijos","Turnos fijos"], ["rutinas","Rutinas"]].map(([k, l]) => (
+          {[["turnos","Turnos"], ["fijos","Turnos fijos"], ["historial","Historial"], ["rutinas","Rutinas"]].map(([k, l]) => (
             <button key={k} onClick={() => setVistaAlumno(k)}
               style={{
                 flex: 1, background: vistaAlumno === k ? "#111" : "transparent",
@@ -225,6 +261,9 @@ export default function PanelAlumno() {
         {/* Rutinas */}
         {vistaAlumno === "rutinas" && <MisRutinas />}
 
+        {/* Historial */}
+        {vistaAlumno === "historial" && <MiHistorial />}
+
         {/* Turnos fijos */}
         {vistaAlumno === "fijos" && (
           <SolicitarTurnosFijos perfil={perfil} user={user} />
@@ -233,7 +272,23 @@ export default function PanelAlumno() {
         {/* Turnos */}
         {vistaAlumno === "turnos" && (<>
 
-          {/* Info plan */}
+          {/* Avisos */}
+          {avisos.map(a => {
+            const colores = {
+              info:    { bg: "#dbeafe", color: "#1e40af", borde: "#93c5fd" },
+              alerta:  { bg: "#fef3c7", color: "#92400e", borde: "#fcd34d" },
+              urgente: { bg: "#fee2e2", color: "#991b1b", borde: "#fca5a5" },
+            };
+            const t = colores[a.tipo] || colores.info;
+            return (
+              <div key={a.id} style={{ background: t.bg, border: "1px solid " + t.borde, borderRadius: 10, padding: "10px 14px", marginBottom: 8, fontSize: 13, color: t.color, lineHeight: 1.5 }}>
+                {a.tipo === "urgente" ? "🚨 " : a.tipo === "alerta" ? "⚠️ " : "ℹ️ "}
+                {a.texto}
+              </div>
+            );
+          })}
+
+        {/* Info plan */}
           <div style={{ background: "#fff", border: "0.5px solid #e0e0e0", borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
               <div>
@@ -380,9 +435,12 @@ export default function PanelAlumno() {
                     badge = { text: "Recuperación · " + recDisp + " disp.", color: "#1e40af", bg: "#dbeafe" };
                   } else if (accion === "reservar_suelta") {
                     badge = { text: "Reservar", color: "#065f46", bg: "#dcfce7" };
+                  } else if (accion === "en_espera") {
+                    bg = "#dbeafe"; borde = "#93c5fd";
+                    badge = { text: "En lista de espera · toca para salir", color: "#1e40af", bg: "#dbeafe" };
                   } else if (motivo === "lleno") {
                     bg = "#f9f9f9"; borde = "#f0f0f0";
-                    badge = { text: "Sin lugares", color: "#92400e", bg: "#fef3c7" };
+                    badge = { text: "Sin lugares · toca para anotarte en espera", color: "#92400e", bg: "#fef3c7" };
                   } else if (motivo === "sin_recuperaciones") {
                     bg = "#f9f9f9"; borde = "#f0f0f0";
                     badge = { text: "Sin recuperaciones", color: "#991b1b", bg: "#fee2e2" };
