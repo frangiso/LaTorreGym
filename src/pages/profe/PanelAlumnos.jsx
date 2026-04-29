@@ -1,3 +1,4 @@
+import { generarReservasFijas } from "../../reservasFijas";
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase";
@@ -165,6 +166,14 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
     }
 
     await updateDoc(doc(db, "usuarios", a.uid), updates);
+    // Si se aprobaron turnos fijos, generar reservas automaticamente
+    if (turnosFijos.length > 0 && updates.turnosFijosEstado !== "rechazado") {
+      await generarReservasFijas({
+        ...a, ...updates,
+        turnosFijos,
+        turnosFijosEstado: "aprobado",
+      }, 4);
+    }
     setGuardando(false);
     setOk(true);
     setTimeout(() => { setOk(false); onCerrar(); }, 1200);
