@@ -1,5 +1,5 @@
 export default function LtLogo({ size = "md" }) {
-  const widths = { sm: 110, md: 220, lg: 320 };
+  const widths = { sm: 90, md: 220, lg: 320 };
   const w = widths[size] || 220;
 
   return (

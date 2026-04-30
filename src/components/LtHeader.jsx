@@ -5,8 +5,8 @@ export default function LtHeader({ rol, onLogout }) {
     <header style={{
       background: "#111",
       borderBottom: "1px solid #222",
-      padding: "0 16px",
-      height: 56,
+      padding: "4px 16px",
+      height: 72,
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
