@@ -201,10 +201,6 @@ export default function SolicitarTurnosFijos({ perfil, user }) {
           <span style={{background:"#dcfce7", color:"#065f46", fontSize:12, fontWeight:500, padding:"4px 12px", borderRadius:20}}>
             Turnos fijos activos
           </span>
-          <button onClick={() => { setSel([]); setModo("elegir"); }}
-            style={{background:"#f5f5f5", border:"none", borderRadius:8, padding:"6px 14px", fontSize:12, color:"#555", cursor:"pointer"}}>
-            Cambiar
-          </button>
         </div>
         <div style={{display:"flex", flexDirection:"column", gap:8}}>
           {turnosFijos.map((t,i) => (
