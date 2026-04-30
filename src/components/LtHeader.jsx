@@ -6,7 +6,7 @@ export default function LtHeader({ rol, onLogout }) {
       background: "#111",
       borderBottom: "1px solid #222",
       padding: "4px 16px",
-      height: 72,
+      height: 64,
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
