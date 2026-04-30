@@ -1,7 +1,7 @@
 import { generarReservasFijas, borrarReservasFijas } from "../../reservasFijas";
 import { useData } from "../../context/DataContext";
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, doc, updateDoc, getDoc, deleteDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, getDoc, deleteDoc, query, where, getDocs, writeBatch, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase";
 import ModalAgregarAlumno from "./ModalAgregarAlumno";
 

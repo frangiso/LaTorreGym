@@ -7,33 +7,20 @@ import { db } from "../../firebase";
 import { useData } from "../../context/DataContext";
 
 export default function Avisos() {
-  const { avisos: avisosActivos } = useData();
-  const [todosAvisos, setTodosAvisos] = useState([]);
-
-  useEffect(() => {
-    const q = query(collection(db, "avisos"));
-    const fn = onSnapshot(q, snap => {
-      setTodosAvisos(
-        snap.docs.map(d => ({ id: d.id, ...d.data() }))
-          .sort((a,b) => (b.creadoEn?.seconds||0) - (a.creadoEn?.seconds||0))
-      );
-    });
-    return fn;
-  }, []);
-
-  const avisos = todosAvisos;
+  const [avisos, setAvisos] = useState([]);
   const [texto, setTexto]         = useState("");
   const [tipo, setTipo]           = useState("info"); // info | alerta | urgente
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, "avisos"));
-    const unsub = onSnapshot(q, snap => {
-      const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      lista.sort((a,b) => (b.creadoEn?.seconds||0) - (a.creadoEn?.seconds||0));
+    const fn = onSnapshot(q, snap => {
+      const lista = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a,b) => (b.creadoEn?.seconds||0) - (a.creadoEn?.seconds||0));
       setAvisos(lista);
     });
-    return () => unsub();
+    return fn;
   }, []);
 
   async function publicar() {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   collection, onSnapshot, doc, addDoc, updateDoc, deleteDoc,
-  query, where, serverTimestamp, orderBy, getDoc
+  query, where, serverTimestamp, getDoc
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useData } from "../../context/DataContext";
@@ -25,10 +25,10 @@ export default function Rutinas() {
     const q = query(
       collection(db, "rutinas"),
       where("alumnoId", "==", alumnoSel.uid),
-      orderBy("creadoEn", "desc")
+      
     );
     const unsub = onSnapshot(q, snap => {
-      setRutinas(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setRutinas(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=>(b.creadoEn?.seconds||0)-(a.creadoEn?.seconds||0)));
       setCargando(false);
     });
     return () => unsub();

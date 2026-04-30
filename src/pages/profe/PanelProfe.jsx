@@ -15,6 +15,13 @@ import TurnosFijosPanel from "./TurnosFijosPanel";
 import Avisos from "./Avisos";
 
 async function autoSeed() {
+  // Cachear en localStorage: si ya corrió esta semana, no volver a hacer getDocs
+  try {
+    const semana = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    if (localStorage.getItem("ltg_seed") === semana) return;
+    localStorage.setItem("ltg_seed", semana);
+  } catch(e) {}
+
   const configRef = doc(db, "config", "gimnasio");
   const configSnap = await getDoc(configRef);
   if (!configSnap.exists()) {
