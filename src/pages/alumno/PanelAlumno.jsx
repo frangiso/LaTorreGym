@@ -141,7 +141,7 @@ export default function PanelAlumno() {
 
     // Es su turno fijo
     if (esMiFijo(dia, hora)) {
-      if (feriad) return { accion: "recuperacion", motivo: "feriado_en_fijo" };
+      if (feriad) return { accion: "recuperacion_feriado", motivo: "feriado_en_fijo" };
       return { accion: "reservar_fijo" };
     }
 
@@ -164,6 +164,10 @@ export default function PanelAlumno() {
         agregarListaEspera(user.uid, (perfil?.nombre || "") + " " + (perfil?.apellido || ""), dia, hora, fecha);
       return;
     }
+    if (accion === "recuperacion_feriado") {
+      setConfirmando({ dia, hora, fecha, tipo: accion });
+      return;
+    }
     setConfirmando({ dia, hora, fecha, tipo: accion });
   }
 
@@ -180,14 +184,17 @@ export default function PanelAlumno() {
         nombreAlumno:   (perfil?.nombre || "") + " " + (perfil?.apellido || ""),
         dia, hora, fecha,
         esFijo:         tipo === "reservar_fijo",
-        esRecuperacion: tipo === "recuperacion",
+        esRecuperacion: tipo === "recuperacion" || tipo === "recuperacion_feriado",
+        esPorFeriado:   tipo === "recuperacion_feriado",
         creadoEn:       serverTimestamp(),
       });
+      // Solo descuenta recuperacion si NO es por feriado en turno fijo
       if (tipo === "recuperacion") {
         await updateDoc(doc(db, "usuarios", user.uid), {
           recuperacionesUsadas: recUsadas + 1,
         });
       }
+      // recuperacion_feriado: no descuenta del contador
     } finally { setProcesando(null); }
   }
 
@@ -208,7 +215,8 @@ export default function PanelAlumno() {
         where("hora",     "==", hora)
       );
       const snap = await getDocs(q);
-      const esRec = snap.docs[0]?.data()?.esRecuperacion || false;
+      const rData = snap.docs[0]?.data();
+      const esRec = rData?.esRecuperacion && !rData?.esPorFeriado;
       await deleteDoc(doc(db, "reservas", reservaId));
       if (esRec) {
         await updateDoc(doc(db, "usuarios", user.uid), {
@@ -320,12 +328,18 @@ export default function PanelAlumno() {
             {confirmando && (
               <div style={{ background: "#111", borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
                 <div style={{ color: "#F5C400", fontWeight: 500, fontSize: 14, marginBottom: 4 }}>
-                  {confirmando.tipo === "recuperacion" ? "Usar clase de recuperación" :
+                  {confirmando.tipo === "recuperacion_feriado" ? "Recuperación por feriado (gratis)" :
+                   confirmando.tipo === "recuperacion" ? "Usar clase de recuperación" :
                    confirmando.tipo === "suelta"       ? "Confirmar clase suelta" : "Confirmar reserva"}
                 </div>
                 <div style={{ color: "#aaa", fontSize: 13, marginBottom: 4 }}>
                   {DIAS_FULL[confirmando.dia]} {confirmando.hora} — {confirmando.fecha}
                 </div>
+                {confirmando.tipo === "recuperacion_feriado" && (
+                  <div style={{ color: "#10b981", fontSize: 12, marginBottom: 10 }}>
+                    ✓ Tu día fijo es feriado — esta recuperación NO descuenta de tus 2 disponibles.
+                  </div>
+                )}
                 {confirmando.tipo === "recuperacion" && (
                   <div style={{ color: "#888", fontSize: 12, marginBottom: 10 }}>
                     Usás 1 recuperación. Te quedan {recDisp - 1} después de esta.
@@ -416,6 +430,8 @@ export default function PanelAlumno() {
                   } else if (accion === "reservar_fijo") {
                     bg = "#FFFBEA"; borde = "#F5C400";
                     badge = { text: "Tu turno fijo", color: "#7a5c00", bg: "#FFF8DC" };
+                  } else if (accion === "recuperacion_feriado") {
+                    badge = { text: "Recuperación por feriado · gratis", color: "#065f46", bg: "#dcfce7" };
                   } else if (accion === "recuperacion") {
                     badge = { text: "Recuperación · " + recDisp + " disp.", color: "#1e40af", bg: "#dbeafe" };
                   } else if (accion === "reservar_suelta") {
