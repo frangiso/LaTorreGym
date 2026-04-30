@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   doc, updateDoc, collection, query, where,
-  onSnapshot, addDoc, deleteDoc, getDocs, serverTimestamp
+  onSnapshot, writeBatch, deleteDoc, getDocs, serverTimestamp
 } from "firebase/firestore";
 import { db } from "../../firebase";
 
@@ -37,6 +37,8 @@ async function crearReservas(uid, nombre, turnos) {
   const lunes = new Date(hoy);
   lunes.setDate(hoy.getDate() - (dow === 0 ? 6 : dow - 1));
 
+  // Primero verificar cupos en paralelo
+  const candidatos = [];
   for (let s = 0; s < 4; s++) {
     for (const t of turnos) {
       const idx = DIAS.indexOf(t.dia);
@@ -44,29 +46,48 @@ async function crearReservas(uid, nombre, turnos) {
       d.setDate(lunes.getDate() + s*7 + idx);
       const fecha = d.toISOString().split("T")[0];
       if (new Date(fecha + "T" + t.hora) < hoy) continue;
-
-      const q    = query(collection(db,"reservas"), where("fecha","==",fecha), where("hora","==",t.hora));
-      const snap = await getDocs(q);
-      if (snap.docs.some(x => x.data().alumnoId === uid)) continue;
-      if (snap.size >= CUPO) continue;
-
-      await addDoc(collection(db,"reservas"), {
-        alumnoId: uid, nombreAlumno: nombre,
-        dia: t.dia, hora: t.hora, fecha,
-        esFijo: true, esRecuperacion: false,
-        creadoEn: serverTimestamp(),
-      });
+      candidatos.push({ dia: t.dia, hora: t.hora, fecha });
     }
   }
+
+  // Verificar cupos en paralelo (mucho más rápido que secuencial)
+  const verificados = await Promise.all(
+    candidatos.map(async c => {
+      const q    = query(collection(db,"reservas"), where("fecha","==",c.fecha), where("hora","==",c.hora));
+      const snap = await getDocs(q);
+      const yaExiste = snap.docs.some(x => x.data().alumnoId === uid);
+      const lleno    = snap.size >= CUPO;
+      return { ...c, ok: !yaExiste && !lleno };
+    })
+  );
+
+  // Escribir todos de una con batch
+  const aEscribir = verificados.filter(x => x.ok);
+  if (aEscribir.length === 0) return;
+
+  // Firestore batch: max 500 ops
+  const batch = writeBatch(db);
+  aEscribir.forEach(r => {
+    const ref = doc(collection(db, "reservas"));
+    batch.set(ref, {
+      alumnoId: uid, nombreAlumno: nombre,
+      dia: r.dia, hora: r.hora, fecha: r.fecha,
+      esFijo: true, esRecuperacion: false,
+      creadoEn: serverTimestamp(),
+    });
+  });
+  await batch.commit();
 }
 
 async function borrarReservas(uid) {
   const hoy  = new Date().toISOString().split("T")[0];
   const q    = query(collection(db,"reservas"), where("alumnoId","==",uid), where("esFijo","==",true));
   const snap = await getDocs(q);
-  for (const d of snap.docs) {
-    if (d.data().fecha >= hoy) await deleteDoc(doc(db,"reservas",d.id));
-  }
+  const aFuturas = snap.docs.filter(d => d.data().fecha >= hoy);
+  if (aFuturas.length === 0) return;
+  const batch = writeBatch(db);
+  aFuturas.forEach(d => batch.delete(doc(db,"reservas",d.id)));
+  await batch.commit();
 }
 
 // ---- Componente principal ----
@@ -347,15 +368,16 @@ export default function SolicitarTurnosFijos({ perfil, user }) {
         })}
       </div>
 
-      <button onClick={confirmar} disabled={!listo || guardando}
+      <button onClick={confirmar} disabled={!listo || guardando || ok}
         style={{
           width:"100%",
-          background: listo ? "#F5C400" : "#e0e0e0",
-          color: listo ? "#111" : "#aaa",
+          background: ok ? "#10b981" : listo ? "#F5C400" : "#e0e0e0",
+          color: ok ? "#fff" : listo ? "#111" : "#aaa",
           border:"none", borderRadius:12, padding:"15px",
-          fontSize:16, fontWeight:700, cursor: listo ? "pointer" : "default"
+          fontSize:16, fontWeight:700, cursor: (listo && !guardando && !ok) ? "pointer" : "default",
+          transition: "background 0.3s",
         }}>
-        {guardando ? "Reservando turnos..." : "Confirmar y reservar →"}
+        {ok ? "✓ ¡Turnos reservados!" : guardando ? "Reservando..." : "Confirmar y reservar →"}
       </button>
       <p style={{fontSize:12, color:"#aaa", marginTop:8, textAlign:"center"}}>
         Se reservan automáticamente si hay lugar disponible.
