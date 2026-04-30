@@ -106,7 +106,7 @@ export default function PanelAlumno() {
         const key = r.dia + "_" + r.hora.replace(":", "") + "_" + r.fecha;
         if (!map[key]) map[key] = 0;
         map[key]++;
-        if (r.alumnoId === user.uid) mias[key] = d.id;
+        if (r.alumnoId === user.uid) mias[key] = { id: d.id, esRecuperacion: r.esRecuperacion || false, esPorFeriado: r.esPorFeriado || false };
       });
       setReservasPorSlot(map);
       setMisReservas(mias);
@@ -121,7 +121,7 @@ export default function PanelAlumno() {
 
   function estadoSlot(dia, hora, fecha, fechasSemana) {
     const key     = dia + "_" + hora.replace(":", "") + "_" + fecha;
-    const tengo   = !!misReservas[key];
+    const tengo   = !!misReservas[key]?.id;
     const ocupados = reservasPorSlot[key] || 0;
     const lleno   = ocupados >= 15 && !tengo;
     const pasado  = new Date(fecha + "T" + hora) < new Date();
@@ -204,24 +204,16 @@ export default function PanelAlumno() {
 
   async function cancelar(dia, hora, fecha) {
     const key = dia + "_" + hora.replace(":", "") + "_" + fecha;
-    const reservaId = misReservas[key];
-    if (!reservaId || procesando) return;
+    const reservaData = misReservas[key];
+    if (!reservaData?.id || procesando) return;
     if (new Date(fecha + "T" + hora) - new Date() < 2 * 60 * 60 * 1000) {
       alert("No podes cancelar con menos de 2 horas de anticipacion."); return;
     }
     setProcesando(key);
     try {
-      // Leer si era recuperacion para devolver el contador
-      const q = query(
-        collection(db, "reservas"),
-        where("alumnoId", "==", user.uid),
-        where("fecha",    "==", fecha),
-        where("hora",     "==", hora)
-      );
-      const snap = await getDocs(q);
-      const rData = snap.docs[0]?.data();
-      const esRec = rData?.esRecuperacion && !rData?.esPorFeriado;
-      await deleteDoc(doc(db, "reservas", reservaId));
+      // Usar datos ya cacheados — sin getDocs extra
+      const esRec = reservaData.esRecuperacion && !reservaData.esPorFeriado;
+      await deleteDoc(doc(db, "reservas", reservaData.id));
       if (esRec) {
         await updateDoc(doc(db, "usuarios", user.uid), {
           recuperacionesUsadas: Math.max(0, recUsadas - 1),
@@ -420,7 +412,7 @@ export default function PanelAlumno() {
                   const key      = diaSeleccionado + "_" + hora.replace(":", "") + "_" + fechaDia;
                   const ocupados = reservasPorSlot[key] || 0;
                   const cupo     = 15;
-                  const tengo    = !!misReservas[key];
+                  const tengo    = !!misReservas[key]?.id;
                   const { accion, motivo } = estadoSlot(diaSeleccionado, hora, fechaDia, fechas);
                   const esFijo   = esMiFijo(diaSeleccionado, hora);
                   const clickable = accion !== "nada" && accion !== "cancelar" && !procesando && accion !== "abrir_modal_feriado";
@@ -577,7 +569,7 @@ function ModalRecuperacionFeriado({ turnoFijo, perfil, user, feriados, onCerrar 
   async function reservarRecuperacion(dia, hora) {
     const fecha = fechas[dia];
     const key   = dia+"_"+hora.replace(":","")+"_"+fecha;
-    if(misReservas[key]) return;
+    if(misReservas[key]?.id) return;
     if((reservasPorSlot[key]||0)>=15) return;
     setProcesando(key);
     try {
@@ -676,7 +668,7 @@ function ModalRecuperacionFeriado({ turnoFijo, perfil, user, feriados, onCerrar 
             const fecha   = fechas[diaActivo];
             const key     = diaActivo+"_"+hora.replace(":","")+"_"+fecha;
             const ocupados= reservasPorSlot[key]||0;
-            const tengo   = !!misReservas[key];
+            const tengo   = !!misReservas[key]?.id;
             const lleno   = ocupados>=15&&!tengo;
             const pasado  = new Date(fecha+"T"+hora)<new Date();
             const block   = lleno||pasado;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useAuth } from "../../context/AuthContext";
 
@@ -13,10 +13,9 @@ export default function MisRutinas() {
     const q = query(
       collection(db, "rutinas"),
       where("alumnoId", "==", user.uid),
-      orderBy("creadoEn", "desc")
     );
     const unsub = onSnapshot(q, snap => {
-      setRutinas(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setRutinas(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.creadoEn?.seconds||0) - (a.creadoEn?.seconds||0)));
       setCargando(false);
     });
     return () => unsub();
