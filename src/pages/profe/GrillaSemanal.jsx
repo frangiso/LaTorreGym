@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import ModalAgregarAlumno from "./ModalAgregarAlumno";
-import { collection, getDocs, doc, setDoc, deleteDoc, onSnapshot, query, where, updateDoc } from "firebase/firestore";
+import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase";
+import { useData } from "../../context/DataContext";
 
 const DIAS = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
 const DIAS_LABEL = { LUNES:"Lun", MARTES:"Mar", MIERCOLES:"Mié", JUEVES:"Jue", VIERNES:"Vie", SABADO:"Sáb" };
@@ -28,6 +29,8 @@ function getFechasDeSemana(inicio) {
 const CUPO = 15;
 
 export default function GrillaSemanal() {
+  const { feriados: feriadosCtx }       = useData();
+  const [feriados, setFeriados]         = useState({});
   const [semanaOffset, setSemanaOffset] = useState(0);
   const [reservasPorSlot, setReservasPorSlot] = useState({});
   const [feriados, setFeriados] = useState({});
@@ -35,17 +38,12 @@ export default function GrillaSemanal() {
   const [cargando, setCargando] = useState(true);
   const [modalAgregar, setModalAgregar] = useState(false);
 
+  // Sincronizar con contexto (actualizaciones del profe se reflejan de inmediato)
+  useEffect(() => { setFeriados(feriadosCtx); }, [feriadosCtx]);
+
   const inicioSemana = getInicioSemana(semanaOffset);
   const fechas = getFechasDeSemana(inicioSemana);
   const hoy = new Date().toISOString().split("T")[0];
-
-  useEffect(() => {
-    getDocs(collection(db, "feriados")).then(snap => {
-      const f = {};
-      snap.docs.forEach(d => { f[d.id] = true; });
-      setFeriados(f);
-    });
-  }, []);
 
   useEffect(() => {
     const fechasArr = Object.values(fechas);

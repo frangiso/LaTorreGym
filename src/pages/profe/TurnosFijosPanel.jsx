@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, doc, getDoc, updateDoc, addDoc, getDocs, query, where, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase";
+import { useData } from "../../context/DataContext";
 import { crearReservasFijas, borrarReservasFijas } from "../../reservasFijas";
 
 const DIAS = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
@@ -15,10 +16,9 @@ function getHorasDia(dia) {
 }
 
 export default function TurnosFijosPanel() {
-  const [alumnos, setAlumnos]     = useState([]);
+  const { alumnos, config }       = useData();
+  const planes                    = config?.planes || [];
   const [ocupacion, setOcupacion] = useState({});
-  const [cargando, setCargando]   = useState(true);
-  const [planes, setPlanes]       = useState([]);
   const [modal, setModal]         = useState(null);
   const [diaActivo, setDiaActivo] = useState("LUNES");
   const [selProfe, setSelProfe]   = useState([]);
@@ -26,28 +26,7 @@ export default function TurnosFijosPanel() {
   const [modalNuevo, setModalNuevo] = useState(false);
   const [formNuevo, setFormNuevo] = useState({ nombre:"", apellido:"", telefono:"", telefonoEmergencia:"", nombreEmergencia:"", planId:"" });
 
-  // 1. Cargar alumnos en tiempo real
-  useEffect(() => {
-    const fn = onSnapshot(collection(db, "usuarios"), snap => {
-      setAlumnos(
-        snap.docs
-          .map(d => ({ uid: d.id, ...d.data() }))
-          .filter(u => u.rol === "alumno")
-          .sort((a, b) => (a.apellido || "").localeCompare(b.apellido || ""))
-      );
-      setCargando(false);
-    });
-    return () => fn();
-  }, []);
-
-  // 2. Cargar planes (una sola vez, sin listener)
-  useEffect(() => {
-    getDoc(doc(db, "config", "gimnasio"))
-      .then(snap => { if (snap.exists()) setPlanes(snap.data().planes || []); })
-      .catch(() => {});
-  }, []);
-
-  // 3. Ocupacion en tiempo real - semana actual
+  // Ocupacion Ocupacion en tiempo real - semana actual
   useEffect(() => {
     const hoy = new Date(); hoy.setHours(0,0,0,0);
     const dow = hoy.getDay();
@@ -133,8 +112,6 @@ export default function TurnosFijosPanel() {
     setSelProfe([]);
     setGuardando(false);
   }
-
-  if (cargando) return <p style={{color:"#888"}}>Cargando...</p>;
 
   // ---- MODAL ASIGNACION ----
   if (modal) {

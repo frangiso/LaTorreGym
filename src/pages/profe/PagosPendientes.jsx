@@ -1,30 +1,18 @@
 import { useEffect, useState } from "react";
-import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase";
+import { useData } from "../../context/DataContext";
 
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
 export default function PagosPendientes() {
-  const [pendientes, setPendientes]     = useState([]);
-  const [todosAlumnos, setTodosAlumnos] = useState([]);
-  const [cargando, setCargando]         = useState(true);
+  const { alumnos: todosAlumnos }       = useData();
+  const pendientes                      = todosAlumnos.filter(a => a.estado === "pago_pendiente");
   const [procesando, setProcesando]     = useState(null);
   const [motivoRechazo, setMotivoRechazo] = useState("");
   const [rechazando, setRechazando]     = useState(null);
   const [mesVer, setMesVer]             = useState(new Date().getMonth());
   const [anioVer, setAnioVer]           = useState(new Date().getFullYear());
-
-  useEffect(() => {
-    const fn = onSnapshot(collection(db, "usuarios"), snap => {
-      const alumnos = snap.docs
-        .map(d => ({ uid: d.id, ...d.data() }))
-        .filter(u => u.rol === "alumno");
-      setTodosAlumnos(alumnos);
-      setPendientes(alumnos.filter(a => a.estado === "pago_pendiente"));
-      setCargando(false);
-    });
-    return () => fn();
-  }, []);
 
   async function confirmar(alumno) {
     setProcesando(alumno.uid);
@@ -72,8 +60,6 @@ export default function PagosPendientes() {
     if (m > 11) { m = 0;  a++; }
     setMesVer(m); setAnioVer(a);
   }
-
-  if (cargando) return <p style={{ color: "#888" }}>Cargando...</p>;
 
   return (
     <div>

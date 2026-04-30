@@ -4,9 +4,11 @@ import {
   query, where, serverTimestamp, orderBy, getDoc
 } from "firebase/firestore";
 import { db } from "../../firebase";
+import { useData } from "../../context/DataContext";
 
 export default function Rutinas() {
-  const [alumnos, setAlumnos]         = useState([]);
+  const { alumnos: todosAlumnos }     = useData();
+  const alumnos = todosAlumnos.filter(a => a.estado === "activo");
   const [alumnoSel, setAlumnoSel]     = useState(null);
   const [rutinas, setRutinas]         = useState([]);
   const [cargando, setCargando]       = useState(false);
@@ -16,17 +18,6 @@ export default function Rutinas() {
   const [mostrarForm, setMostrarForm] = useState(false);
 
   // Cargar alumnos activos
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, "usuarios"), snap => {
-      const lista = snap.docs
-        .map(d => ({ uid: d.id, ...d.data() }))
-        .filter(u => u.rol === "alumno" && u.estado === "activo")
-        .sort((a, b) => (a.apellido || "").localeCompare(b.apellido || ""));
-      setAlumnos(lista);
-    });
-    return () => unsub();
-  }, []);
-
   // Cargar rutinas del alumno seleccionado
   useEffect(() => {
     if (!alumnoSel) { setRutinas([]); return; }

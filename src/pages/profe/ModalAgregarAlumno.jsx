@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { collection, addDoc, doc, getDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase";
+import { useData } from "../../context/DataContext";
 
 export default function ModalAgregarAlumno({ onClose }) {
   const [form, setForm] = useState({

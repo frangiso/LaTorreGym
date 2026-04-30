@@ -13,31 +13,12 @@ const ESTADO_COLOR = {
 };
 
 export default function PanelAlumnos() {
-  const [alumnos, setAlumnos]       = useState([]);
+  const { alumnos, config }         = useData();
+  const planes                      = config?.planes || [];
   const [filtro, setFiltro]         = useState("todos");
   const [busqueda, setBusqueda]     = useState("");
-  const [cargando, setCargando]     = useState(true);
   const [editando, setEditando]     = useState(null);
   const [modalAgregar, setModalAgregar] = useState(false);
-  const [planes, setPlanes]         = useState([]);
-
-  useEffect(() => {
-    getDoc(doc(db, "config", "gimnasio")).then(snap => {
-      if (snap.exists()) setPlanes(snap.data().planes || []);
-    });
-  }, []);
-
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, "usuarios"), snap => {
-      const lista = snap.docs
-        .map(d => ({ uid: d.id, ...d.data() }))
-        .filter(u => u.rol === "alumno")
-        .sort((a, b) => (a.apellido || "").localeCompare(b.apellido || ""));
-      setAlumnos(lista);
-      setCargando(false);
-    });
-    return () => unsub();
-  }, []);
 
   const filtrados = alumnos.filter(a => {
     const matchEstado   = filtro === "todos" || a.estado === filtro;
@@ -45,8 +26,6 @@ export default function PanelAlumnos() {
       (a.nombre + " " + a.apellido + " " + a.email).toLowerCase().includes(busqueda.toLowerCase());
     return matchEstado && matchBusqueda;
   });
-
-  if (cargando) return <p style={{ color: "#888" }}>Cargando...</p>;
 
   return (
     <div>
