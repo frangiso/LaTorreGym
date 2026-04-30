@@ -101,7 +101,8 @@ export default function TurnosFijosPanel() {
       email: "", rol: "alumno", estado: "activo",
       planId: formNuevo.planId, planNombre: plan?.nombre || "",
       metodoPago: "efectivo", montoPagado: plan?.precioEfectivo || 0,
-      fechaActivacion: serverTimestamp(), fechaVencimiento: vence,
+      fechaActivacion: null, // se registra cuando el profe aprueba el pago
+      fechaVencimiento: null,
       turnosFijos: [], turnosFijosEstado: null,
       clasesUsadasMes: 0, recuperacionesUsadas: 0,
       creadoPorProfe: true, creadoEn: serverTimestamp(),

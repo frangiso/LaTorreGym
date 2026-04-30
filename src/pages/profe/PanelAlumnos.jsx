@@ -140,9 +140,10 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
     };
 
     if (form.planId && form.planId !== a.planId) {
-      updates.montoPagado     = form.metodoPago === "transferencia" ? plan.precioTransferencia : plan.precioEfectivo;
-      updates.fechaActivacion = new Date();
+      updates.montoPagado      = form.metodoPago === "transferencia" ? plan.precioTransferencia : plan.precioEfectivo;
+      updates.fechaActivacion  = new Date(); // renovación de plan = ingreso en caja
       updates.fechaVencimiento = vence;
+      updates.estado           = "activo";
     }
 
     await updateDoc(doc(db, "usuarios", a.uid), updates);
@@ -167,9 +168,23 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
     if (!confirm("Segunda confirmación: ¿estás seguro de eliminar a " + nombre + "?")) return;
     setGuardando(true);
     try {
-      // Borrar reservas futuras
+      // 1. Borrar reservas futuras
       await borrarReservasFijas(a.uid);
-      // Borrar perfil
+      // 2. Borrar reservas pasadas del alumno
+      const qRes = query(collection(db, "reservas"), where("alumnoId", "==", a.uid));
+      const snapRes = await getDocs(qRes);
+      const batch = writeBatch(db);
+      snapRes.docs.forEach(d => batch.delete(doc(db, "reservas", d.id)));
+      if (snapRes.docs.length > 0) await batch.commit();
+      // 3. Liberar el email para que pueda volver a registrarse
+      if (a.email) {
+        await setDoc(doc(db, "emailsLiberados", a.email.replace(/\./g, "_")), {
+          email: a.email,
+          liberadoEn: serverTimestamp(),
+          nombreAnterior: nombre,
+        });
+      }
+      // 4. Borrar perfil del usuario
       await deleteDoc(doc(db, "usuarios", a.uid));
     } catch(e) {
       console.error(e);
