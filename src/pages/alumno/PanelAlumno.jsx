@@ -168,8 +168,8 @@ export default function PanelAlumno() {
         agregarListaEspera(user.uid, (perfil?.nombre || "") + " " + (perfil?.apellido || ""), dia, hora, fecha);
       return;
     }
-    if (accion === "recuperacion_feriado") {
-      setConfirmando({ dia, hora, fecha, tipo: accion });
+    if (accion === "abrir_modal_feriado") {
+      setModalRecFeriado({ diaFijo: dia, horaFijo: hora });
       return;
     }
     setConfirmando({ dia, hora, fecha, tipo: accion });
@@ -423,7 +423,7 @@ export default function PanelAlumno() {
                   const tengo    = !!misReservas[key];
                   const { accion, motivo } = estadoSlot(diaSeleccionado, hora, fechaDia, fechas);
                   const esFijo   = esMiFijo(diaSeleccionado, hora);
-                  const clickable = accion !== "nada" && accion !== "cancelar" && !procesando;
+                  const clickable = accion !== "nada" && accion !== "cancelar" && !procesando && accion !== "abrir_modal_feriado";
                   const isProcesando = procesando === key;
 
                   // Estilos por estado
@@ -466,13 +466,14 @@ export default function PanelAlumno() {
                       onClick={() => {
                         if (isProcesando) return;
                         if (tengo) cancelar(diaSeleccionado, hora, fechaDia);
+                        else if (accion === "abrir_modal_feriado") handleClickSlot(diaSeleccionado, hora, fechaDia);
                         else if (clickable) handleClickSlot(diaSeleccionado, hora, fechaDia);
                       }}
                       style={{
                         background: bg,
                         border: "1.5px solid " + borde,
                         borderRadius: 12, padding: "12px 14px",
-                        cursor: (tengo || clickable) && !isProcesando ? "pointer" : "default",
+                        cursor: (tengo || clickable || accion === "abrir_modal_feriado") && !isProcesando ? "pointer" : "default",
                         display: "flex", alignItems: "center", justifyContent: "space-between",
                         opacity: isProcesando ? 0.6 : 1,
                       }}>
