@@ -1,8 +1,4 @@
-import { useEffect, useState } from "react";
-import { signOut } from "firebase/auth";
-import { auth, db } from "../../firebase";
-import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+useNavigate } from "react-router-dom";
 import {
   collection, query, where, onSnapshot, addDoc, deleteDoc,
   doc, getDocs, serverTimestamp, updateDoc
