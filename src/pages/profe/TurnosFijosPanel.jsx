@@ -93,12 +93,11 @@ export default function TurnosFijosPanel() {
     if (!formNuevo.nombre || !formNuevo.apellido || !formNuevo.planId) { alert("Completá nombre, apellido y plan."); return; }
     setGuardando(true);
     const plan = planes.find(p => p.id === formNuevo.planId);
-    const vence = new Date(); vence.setMonth(vence.getMonth() + 1);
     const ref = await addDoc(collection(db, "usuarios"), {
       nombre: formNuevo.nombre, apellido: formNuevo.apellido,
       telefono: formNuevo.telefono, telefonoEmergencia: formNuevo.telefonoEmergencia,
       nombreEmergencia: formNuevo.nombreEmergencia,
-      email: "", rol: "alumno", estado: "activo",
+      email: "", rol: "alumno", estado: "pago_pendiente",
       planId: formNuevo.planId, planNombre: plan?.nombre || "",
       metodoPago: "efectivo", montoPagado: plan?.precioEfectivo || 0,
       fechaActivacion: null, // se registra cuando el profe aprueba el pago
@@ -266,7 +265,7 @@ export default function TurnosFijosPanel() {
 
   // ---- VISTA PRINCIPAL ----
   const conFijos = alumnos.filter(a => a.turnosFijosEstado === "aprobado" && (a.turnosFijos||[]).length > 0);
-  const sinFijos = alumnos.filter(a => a.estado === "activo" && a.planId && a.planId !== "suelta" && a.turnosFijosEstado !== "aprobado");
+  const sinFijos = alumnos.filter(a => (a.estado === "activo" || a.estado === "pago_pendiente") && a.planId && a.planId !== "suelta" && a.turnosFijosEstado !== "aprobado");
 
   return (
     <div>
