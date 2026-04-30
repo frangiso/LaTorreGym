@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { signOut } from "firebase/auth";
+import { auth } from "../firebase";
 
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
@@ -22,7 +24,7 @@ export default function InstructivoPlanes() {
 
   return (
     <LtLayout>
-      <LtHeader />
+      <LtHeader onLogout={() => signOut(auth)} />
       <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 16px 48px" }}>
 
         {/* Bienvenida */}
@@ -125,6 +127,11 @@ export default function InstructivoPlanes() {
           </span>
         </label>
 
+        {!aceptado && (
+          <p style={{ fontSize: 13, color: "#F5C400", textAlign: "center", margin: "0 0 8px", fontWeight: 500 }}>
+            ↑ Aceptá el reglamento para continuar
+          </p>
+        )}
         <button
           onClick={() => navigate("/pago")}
           disabled={!aceptado}

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
 import { useData } from "../context/DataContext";
+import { signOut } from "firebase/auth";
+import { auth } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import LtLayout from "../components/LtLayout";
@@ -64,7 +66,7 @@ export default function PagoInstructivo() {
 
   return (
     <LtLayout>
-      <LtHeader />
+      <LtHeader onLogout={() => signOut(auth)} />
       <div style={{ maxWidth: 520, margin: "0 auto", padding: "24px 16px 48px" }}>
 
         <h1 style={{ fontSize: 20, fontWeight: 500, color: "#111", marginBottom: 4 }}>Registrar pago</h1>

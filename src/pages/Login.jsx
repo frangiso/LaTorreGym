@@ -57,6 +57,7 @@ export default function Login() {
             <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 5 }}>Email</label>
             <input
               type="email"
+              name="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
@@ -71,6 +72,7 @@ export default function Login() {
             <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 5 }}>Contraseña</label>
             <input
               type="password"
+              name="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required

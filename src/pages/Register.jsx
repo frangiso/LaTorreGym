@@ -48,6 +48,9 @@ export default function Register() {
   async function handleRegister(e) {
     e.preventDefault();
     setError("");
+    if (!form.nombre.trim()) { setError("El nombre es obligatorio."); return; }
+    if (!form.apellido.trim()) { setError("El apellido es obligatorio."); return; }
+    if (!form.telefono.trim()) { setError("El teléfono es obligatorio."); return; }
     if (form.password !== form.confirm) { setError("Las contraseñas no coinciden."); return; }
     if (form.password.length < 6) { setError("La contraseña debe tener al menos 6 caracteres."); return; }
     setLoading(true);
