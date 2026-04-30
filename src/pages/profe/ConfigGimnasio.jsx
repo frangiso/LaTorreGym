@@ -1,6 +1,6 @@
 import { exportarBackupExcel } from "../../utils/exportarExcel";
 import { useEffect, useState } from "react";
-import { doc, getDoc, setDoc } , getDocs, collection from "firebase/firestore";
+import { doc, getDoc, setDoc, getDocs, collection, query, where } from "firebase/firestore";
 import { db } from "../../firebase";
 
 export default function ConfigGimnasio() {
