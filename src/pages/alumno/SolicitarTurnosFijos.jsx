@@ -86,44 +86,30 @@ export default function SolicitarTurnosFijos({ perfil, user }) {
   const esSuelta    = planId === "suelta";
   const recUsadas   = perfil?.recuperacionesUsadas ?? 0;
 
-  // Escuchar ocupacion en tiempo real
+  // Escuchar ocupacion en tiempo real - semana actual
   useEffect(() => {
     if (!planId || esSuelta || cantMax === 0) return;
-
-    // Fechas de las proximas 4 semanas
     const hoy = new Date(); hoy.setHours(0,0,0,0);
     const dow = hoy.getDay();
     const lunes = new Date(hoy);
     lunes.setDate(hoy.getDate() - (dow === 0 ? 6 : dow - 1));
-    const fechas = [];
-    for (let s = 0; s < 4; s++) {
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(lunes);
-        d.setDate(lunes.getDate() + s * 7 + i);
-        fechas.push(d.toISOString().split("T")[0]);
-      }
+    const fechasSemana = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(lunes);
+      d.setDate(lunes.getDate() + i);
+      fechasSemana.push(d.toISOString().split("T")[0]);
     }
-
-    const unsubscribers = [];
-    for (let i = 0; i < fechas.length; i += 7) {
-      const chunk = fechas.slice(i, i + 7);
-      const q = query(collection(db, "reservas"), where("fecha", "in", chunk));
-      const unsub = onSnapshot(q, snap => {
-        setOcupacion(prev => {
-          const conteos = { ...prev };
-          snap.docs.forEach(d => {
-            const r = d.data();
-            const k = r.dia + "_" + r.hora.replace(":", "");
-            conteos[k] = (conteos[k] || 0) + 1;
-          });
-          return conteos;
-        });
-      }, err => {
-        console.error("Error ocupacion alumno:", err.message);
+    const q = query(collection(db, "reservas"), where("fecha", "in", fechasSemana));
+    const cancelar = onSnapshot(q, snap => {
+      const conteos = {};
+      snap.docs.forEach(d => {
+        const r = d.data();
+        const k = r.dia + "_" + r.hora.replace(":", "");
+        conteos[k] = (conteos[k] || 0) + 1;
       });
-      unsubscribers.push(unsub);
-    }
-    return () => { unsubscribers.forEach(fn => fn()); };
+      setOcupacion(conteos);
+    }, err => console.error("ocupacion alumno:", err.message));
+    return () => cancelar();
   }, [planId]);
 
   // Pre-cargar seleccionados con los turnos actuales al editar
