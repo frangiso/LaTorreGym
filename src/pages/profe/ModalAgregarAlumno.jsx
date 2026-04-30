@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useData } from "../../context/DataContext";
 
@@ -9,15 +9,11 @@ export default function ModalAgregarAlumno({ onClose }) {
     telefonoEmergencia: "", nombreEmergencia: "",
     planId: "", metodoPago: "efectivo"
   });
-  const [planes, setPlanes] = useState([]);
+  const { config } = useData();
+  const planes = config?.planes || [];
   const [guardando, setGuardando] = useState(false);
   const [ok, setOk] = useState(false);
 
-  useEffect(() => {
-    getDoc(doc(db, "config", "gimnasio")).then(snap => {
-      if (snap.exists()) setPlanes(snap.data().planes || []);
-    });
-  }, []);
 
   function handleChange(e) {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }));
