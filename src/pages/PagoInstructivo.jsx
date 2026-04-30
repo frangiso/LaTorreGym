@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
+import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import LtLayout from "../components/LtLayout";
@@ -8,21 +9,15 @@ import LtHeader from "../components/LtHeader";
 
 export default function PagoInstructivo() {
   const { user, perfil } = useAuth();
-  const [config, setConfig] = useState(null);
+  const { config } = useData();
   const [metodo, setMetodo] = useState("transferencia");
   const [planSeleccionado, setPlanSeleccionado] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    getDoc(doc(db, "config", "gimnasio")).then(snap => {
-      if (snap.exists()) {
-        setConfig(snap.data());
-        const planes = snap.data().planes;
-        if (planes?.length) setPlanSeleccionado(planes[0]);
-      }
-    });
-  }, []);
+    if (config?.planes?.length) setPlanSeleccionado(p => p || config.planes[0]);
+  }, [config]);
 
   useEffect(() => {
     if (perfil?.estado === "pago_pendiente") navigate("/espera");

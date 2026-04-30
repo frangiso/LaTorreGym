@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebase";
+
+import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import LtLayout from "../components/LtLayout";
@@ -8,15 +8,9 @@ import LtHeader from "../components/LtHeader";
 
 export default function InstructivoPlanes() {
   const { perfil } = useAuth();
-  const [config, setConfig] = useState(null);
+  const { config } = useData();
   const [aceptado, setAceptado] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    getDoc(doc(db, "config", "gimnasio")).then(snap => {
-      if (snap.exists()) setConfig(snap.data());
-    });
-  }, []);
 
   // Si ya pagó, no volver acá
   useEffect(() => {

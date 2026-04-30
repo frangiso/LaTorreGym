@@ -3,13 +3,13 @@ import { signOut } from "firebase/auth";
 import { auth, db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import LtHeader from "../components/LtHeader";
 
 export default function EsperaAprobacion() {
   const { user, perfil } = useAuth();
   const navigate = useNavigate();
-  const [config, setConfig] = useState(null);
+  const { config } = useData();
   const [planSeleccionado, setPlanSeleccionado] = useState(null);
   const [metodo, setMetodo] = useState("transferencia");
   const [enviando, setEnviando] = useState(false);
@@ -22,14 +22,8 @@ export default function EsperaAprobacion() {
   }, [perfil]);
 
   useEffect(() => {
-    getDoc(doc(db, "config", "gimnasio")).then(snap => {
-      if (snap.exists()) {
-        setConfig(snap.data());
-        const planes = snap.data().planes;
-        if (planes?.length) setPlanSeleccionado(planes[0]);
-      }
-    });
-  }, []);
+    if (config?.planes?.length) setPlanSeleccionado(p => p || config.planes[0]);
+  }, [config]);
 
   async function enviarRenovacion() {
     if (!planSeleccionado || !user) return;
