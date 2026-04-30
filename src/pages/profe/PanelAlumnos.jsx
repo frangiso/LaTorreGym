@@ -143,7 +143,6 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
     const plan = planes.find(p => p.id === form.planId);
     const vence = new Date();
     vence.setMonth(vence.getMonth() + 1);
-    vence.setDate(5);
 
     const updates = {
       nombre:             form.nombre,

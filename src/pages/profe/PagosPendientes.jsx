@@ -30,7 +30,6 @@ export default function PagosPendientes() {
     setProcesando(alumno.uid);
     const vence = new Date();
     vence.setMonth(vence.getMonth() + 1);
-    vence.setDate(5);
     await updateDoc(doc(db, "usuarios", alumno.uid), {
       estado: "activo",
       fechaActivacion: serverTimestamp(),

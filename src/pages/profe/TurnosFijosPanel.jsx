@@ -114,7 +114,7 @@ export default function TurnosFijosPanel() {
     if (!formNuevo.nombre || !formNuevo.apellido || !formNuevo.planId) { alert("Completá nombre, apellido y plan."); return; }
     setGuardando(true);
     const plan = planes.find(p => p.id === formNuevo.planId);
-    const vence = new Date(); vence.setMonth(vence.getMonth() + 1); vence.setDate(5);
+    const vence = new Date(); vence.setMonth(vence.getMonth() + 1);
     const ref = await addDoc(collection(db, "usuarios"), {
       nombre: formNuevo.nombre, apellido: formNuevo.apellido,
       telefono: formNuevo.telefono, telefonoEmergencia: formNuevo.telefonoEmergencia,

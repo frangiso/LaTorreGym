@@ -28,7 +28,6 @@ export default function ModalAgregarAlumno({ onClose }) {
     const plan = planes.find(p => p.id === form.planId);
     const vence = new Date();
     vence.setMonth(vence.getMonth() + 1);
-    vence.setDate(5);
 
     await addDoc(collection(db, "usuarios"), {
       nombre: form.nombre,
