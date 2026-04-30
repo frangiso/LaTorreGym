@@ -1,6 +1,6 @@
 // utils/listaEspera.js
 import { collection, addDoc, deleteDoc, doc, query, where, getDocs,
-         onSnapshot, orderBy, serverTimestamp, updateDoc } from "firebase/firestore";
+         onSnapshot, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { generarReservasFijas } from "../reservasFijas";
 
@@ -41,14 +41,14 @@ export async function procesarListaEspera(dia, hora, fecha) {
   const q = query(
     collection(db, "listaEspera"),
     where("fecha", "==", fecha),
-    where("hora",  "==", hora),
-    orderBy("creadoEn", "asc")
+    where("hora",  "==", hora)
   );
   const snap = await getDocs(q);
   if (snap.empty) return null;
 
-  // Marcar al primero como "notificado"
-  const primero = snap.docs[0];
+  // Ordenar en memoria y tomar el primero
+  const ordenados = snap.docs.sort((a,b) => (a.data().creadoEn?.seconds||0) - (b.data().creadoEn?.seconds||0));
+  const primero = ordenados[0];
   await updateDoc(doc(db, "listaEspera", primero.id), { notificado: true });
   return primero.data();
 }

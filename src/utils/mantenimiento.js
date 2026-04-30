@@ -11,7 +11,19 @@ let ultimoMantenimiento = null;
 export async function correrMantenimiento() {
   const hoyStr = new Date().toDateString();
   if (ultimoMantenimiento === hoyStr) return; // ya corrió hoy en esta sesión
+
+  // También chequear localStorage para no correr si ya corrió hoy en otra sesión
+  try {
+    const guardado = localStorage.getItem("ltg_mantenimiento");
+    if (guardado === hoyStr) {
+      ultimoMantenimiento = hoyStr;
+      return;
+    }
+  } catch(e) {}
+
   ultimoMantenimiento = hoyStr;
+  try { localStorage.setItem("ltg_mantenimiento", hoyStr); } catch(e) {}
+
   const hoy = new Date();
   const snap = await getDocs(collection(db, "usuarios"));
   const alumnos = snap.docs
