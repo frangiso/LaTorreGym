@@ -1,5 +1,6 @@
+import { exportarBackupExcel } from "../../utils/exportarExcel";
 import { useEffect, useState } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } , getDocs, collection from "firebase/firestore";
 import { db } from "../../firebase";
 
 export default function ConfigGimnasio() {
@@ -41,6 +42,38 @@ export default function ConfigGimnasio() {
   }
 
   if (!config) return <p style={{ color: "#888" }}>Cargando configuración...</p>;
+
+  const [haciendoBackup, setHaciendoBackup] = useState(false);
+  const [resultadoBackup, setResultadoBackup] = useState(null);
+
+  async function realizarBackup() {
+    setHaciendoBackup(true);
+    setResultadoBackup(null);
+    try {
+      // Traer alumnos
+      const snapAlumnos = await getDocs(collection(db, "usuarios"));
+      const alumnos = snapAlumnos.docs
+        .map(d => ({ uid: d.id, ...d.data() }))
+        .filter(u => u.rol === "alumno");
+
+      // Traer reservas del mes
+      const hoy   = new Date();
+      const anio  = hoy.getFullYear();
+      const mes   = String(hoy.getMonth() + 1).padStart(2, "0");
+      const desde = anio + "-" + mes + "-01";
+      const hasta = anio + "-" + mes + "-31";
+      const qRes  = query(collection(db, "reservas"), where("fecha", ">=", desde), where("fecha", "<=", hasta));
+      const snapRes = await getDocs(qRes);
+      const reservas = snapRes.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      await exportarBackupExcel(alumnos, reservas);
+      setResultadoBackup({ alumnos: alumnos.length, reservas: reservas.length });
+    } catch(e) {
+      console.error(e);
+      alert("Error al hacer backup: " + e.message);
+    }
+    setHaciendoBackup(false);
+  }
 
   return (
     <div style={{ maxWidth: 680 }}>
@@ -133,6 +166,39 @@ function Field({ label, children }) {
     <div style={{ marginBottom: 10 }}>
       <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>{label}</label>
       {children}
+      {/* ====== BACKUP ====== */}
+      <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid #e0e0e0" }}>
+        <h3 style={{ fontSize: 15, fontWeight: 500, color: "#111", margin: "0 0 6px" }}>Copia de seguridad</h3>
+        <p style={{ fontSize: 13, color: "#888", margin: "0 0 16px", lineHeight: 1.5 }}>
+          Descargá un archivo JSON con todos los datos del sistema: alumnos, reservas, config, avisos y feriados.
+          Guardalo en un lugar seguro por si necesitás recuperar información.
+        </p>
+
+        {resultadoBackup && (
+          <div style={{ background: "#dcfce7", border: "1px solid #86efac", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "#065f46", marginBottom: 6 }}>✓ Backup descargado correctamente</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <span style={{ fontSize: 12, color: "#065f46", background: "#f0fdf4", padding: "2px 10px", borderRadius: 20 }}>
+                {resultadoBackup.alumnos} alumnos
+              </span>
+              <span style={{ fontSize: 12, color: "#065f46", background: "#f0fdf4", padding: "2px 10px", borderRadius: 20 }}>
+                {resultadoBackup.reservas} reservas del mes
+              </span>
+            </div>
+          </div>
+        )}
+
+        <button onClick={realizarBackup} disabled={haciendoBackup}
+          style={{
+            background: haciendoBackup ? "#e0e0e0" : "#111",
+            color: haciendoBackup ? "#aaa" : "#F5C400",
+            border: "none", borderRadius: 10, padding: "12px 24px",
+            fontSize: 14, fontWeight: 500, cursor: haciendoBackup ? "default" : "pointer",
+            display: "flex", alignItems: "center", gap: 8,
+          }}>
+          {haciendoBackup ? "Generando backup..." : "💾 Descargar copia de seguridad"}
+        </button>
+      </div>
     </div>
   );
 }
