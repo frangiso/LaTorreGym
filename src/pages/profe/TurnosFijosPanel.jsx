@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { doc, getDoc, updateDoc, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, addDoc, serverTimestamp, collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useData } from "../../context/DataContext";
 import { crearReservasFijas, borrarReservasFijas } from "../../reservasFijas";
