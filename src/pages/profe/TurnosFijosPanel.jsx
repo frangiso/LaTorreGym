@@ -46,44 +46,29 @@ export default function TurnosFijosPanel() {
     return ()=>unsub();
   },[]);
 
-  // Ocupacion en tiempo real - solo esta semana para evitar queries complejas
+  // Ocupacion en tiempo real - semana actual solamente
   useEffect(()=>{
     const hoy = new Date(); hoy.setHours(0,0,0,0);
     const dow = hoy.getDay();
     const lunes = new Date(hoy);
     lunes.setDate(hoy.getDate() - (dow === 0 ? 6 : dow - 1));
-    // Generar fechas de las proximas 4 semanas
-    const fechas = [];
-    for (let s = 0; s < 4; s++) {
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(lunes);
-        d.setDate(lunes.getDate() + s * 7 + i);
-        fechas.push(d.toISOString().split("T")[0]);
-      }
+    const fechasSemana = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(lunes);
+      d.setDate(lunes.getDate() + i);
+      fechasSemana.push(d.toISOString().split("T")[0]);
     }
-    // Una sola query por semana (max 7 fechas por chunk para evitar limite)
-    const unsubscribers = [];
-    for (let i = 0; i < fechas.length; i += 7) {
-      const chunk = fechas.slice(i, i + 7);
-      const q = query(collection(db, "reservas"), where("fecha", "in", chunk));
-      const unsub = onSnapshot(q, snap => {
-        setOcupacion(prev => {
-          const next = { ...prev };
-          // Recalcular conteos para este chunk
-          const conteos = {};
-          snap.docs.forEach(d => {
-            const r = d.data();
-            const k = r.dia + "_" + r.hora.replace(":", "");
-            conteos[k] = (conteos[k] || 0) + 1;
-          });
-          return { ...next, ...conteos };
-        });
-      }, err => {
-        console.error("Error ocupacion:", err.message);
+    const q = query(collection(db, "reservas"), where("fecha", "in", fechasSemana));
+    const cancelar = onSnapshot(q, snap => {
+      const conteos = {};
+      snap.docs.forEach(d => {
+        const r = d.data();
+        const k = r.dia + "_" + r.hora.replace(":", "");
+        conteos[k] = (conteos[k] || 0) + 1;
       });
-      unsubscribers.push(unsub);
-    }
-    return () => { unsubscribers.forEach(fn => fn()); };
+      setOcupacion(conteos);
+    }, err => console.error("ocupacion:", err.message));
+    return () => cancelar();
   }, []);
 
   function cupoDisp(dia,hora){ return Math.max(0,CUPO-(ocupacion[dia+"_"+hora.replace(":","")]||0)); }
