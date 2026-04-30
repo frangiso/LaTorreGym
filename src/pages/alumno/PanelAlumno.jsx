@@ -145,7 +145,11 @@ export default function PanelAlumno() {
       return { accion: "reservar_fijo" };
     }
 
-    // Slot libre pero no es su fijo — usa recuperacion
+    // Día feriado pero NO es su turno fijo — no puede reservar en otros horarios del feriado
+    // Solo puede usar recuperacion en su slot fijo (ya manejado arriba)
+    if (feriad) return { accion: "nada", motivo: "feriado" };
+
+    // Slot libre, dia normal — usa recuperacion
     if (recDisp <= 0) return { accion: "nada", motivo: "sin_recuperaciones" };
     return { accion: "recuperacion" };
   }
@@ -442,6 +446,8 @@ export default function PanelAlumno() {
                   } else if (motivo === "lleno") {
                     bg = "#f9f9f9"; borde = "#f0f0f0";
                     badge = { text: "Sin lugares · toca para anotarte en espera", color: "#92400e", bg: "#fef3c7" };
+                  } else if (motivo === "feriado") {
+                    bg = "#fee2e2"; borde = "#fecaca";
                   } else if (motivo === "sin_recuperaciones") {
                     bg = "#f9f9f9"; borde = "#f0f0f0";
                     badge = { text: "Sin recuperaciones", color: "#991b1b", bg: "#fee2e2" };
