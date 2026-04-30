@@ -5,9 +5,10 @@ import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import {
   collection, query, where, onSnapshot, addDoc, deleteDoc,
-  doc, getDocs, serverTimestamp, updateDoc, orderBy
+  doc, getDocs, serverTimestamp, updateDoc
 } from "firebase/firestore";
 import LtHeader from "../../components/LtHeader";
+import { useData } from "../../context/DataContext";
 import MisRutinas from "./MisRutinas";
 import MiHistorial from "./MiHistorial";
 import { agregarListaEspera, salirListaEspera } from "../../utils/listaEspera";
@@ -49,12 +50,11 @@ export default function PanelAlumno() {
   const [semanaOffset, setSemanaOffset] = useState(0);
   const [reservasPorSlot, setReservasPorSlot] = useState({});
   const [misReservas, setMisReservas]         = useState({});
-  const [feriados, setFeriados]               = useState({});
   const [procesando, setProcesando]           = useState(null);
   const [confirmando, setConfirmando]         = useState(null);
   const [diaSeleccionado, setDiaSeleccionado] = useState(null);
   const [vistaAlumno, setVistaAlumno]         = useState("turnos");
-  const [avisos, setAvisos]                   = useState([]);
+  const { avisos, feriados }                  = useData();
   const [enEspera, setEnEspera]               = useState({});
 
   const inicioSemana = getInicioSemana(semanaOffset);
@@ -79,13 +79,6 @@ export default function PanelAlumno() {
     setDiaSeleccionado(map[new Date().getDay()] || "LUNES");
   }, []);
 
-  // Avisos activos
-  useEffect(() => {
-    const q = query(collection(db, "avisos"), where("activo", "==", true), orderBy("creadoEn", "desc"));
-    const unsub = onSnapshot(q, snap => setAvisos(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-    return () => unsub();
-  }, []);
-
   // Lista de espera del alumno (esta semana)
   useEffect(() => {
     if (!user) return;
@@ -100,14 +93,6 @@ export default function PanelAlumno() {
     });
     return () => unsub();
   }, [user]);
-
-  useEffect(() => {
-    getDocs(collection(db, "feriados")).then(snap => {
-      const f = {};
-      snap.docs.forEach(d => { f[d.id] = true; });
-      setFeriados(f);
-    });
-  }, []);
 
   useEffect(() => {
     if (!user) return;
