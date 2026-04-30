@@ -8,6 +8,8 @@ export default function ConfigGimnasio() {
   const [guardando, setGuardando] = useState(false);
   const [ok, setOk] = useState(false);
   const [nuevoItem, setNuevoItem] = useState("");
+  const [haciendoBackup, setHaciendoBackup] = useState(false);
+  const [resultadoBackup, setResultadoBackup] = useState(null);
 
   useEffect(() => {
     getDoc(doc(db, "config", "gimnasio")).then(snap => {
@@ -42,9 +44,6 @@ export default function ConfigGimnasio() {
   }
 
   if (!config) return <p style={{ color: "#888" }}>Cargando configuración...</p>;
-
-  const [haciendoBackup, setHaciendoBackup] = useState(false);
-  const [resultadoBackup, setResultadoBackup] = useState(null);
 
   async function realizarBackup() {
     setHaciendoBackup(true);
