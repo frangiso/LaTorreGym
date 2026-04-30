@@ -526,40 +526,38 @@ export default function PanelAlumno() {
 
 // ---- Modal para elegir recuperación por feriado ----
 function ModalRecuperacionFeriado({ turnoFijo, perfil, user, feriados, onCerrar }) {
-  const DIAS      = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
-  const DIAS_FULL = { LUNES:"Lunes", MARTES:"Martes", MIERCOLES:"Miercoles", JUEVES:"Jueves", VIERNES:"Viernes", SABADO:"Sabado" };
-  const DIAS_CORTO= { LUNES:"Lun", MARTES:"Mar", MIERCOLES:"Mie", JUEVES:"Jue", VIERNES:"Vie", SABADO:"Sab" };
+  const DIAS       = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
+  const DIAS_FULL  = { LUNES:"Lunes", MARTES:"Martes", MIERCOLES:"Miercoles", JUEVES:"Jueves", VIERNES:"Viernes", SABADO:"Sabado" };
+  const DIAS_CORTO = { LUNES:"Lun", MARTES:"Mar", MIERCOLES:"Mie", JUEVES:"Jue", VIERNES:"Vie", SABADO:"Sab" };
 
-  const [diaActivo, setDiaActivo]     = useState("LUNES");
-  const [reservasPorSlot, setRes]     = useState({});
-  const [misReservas, setMisRes]      = useState({});
-  const [procesando, setProcesando]   = useState(null);
-  const [ok, setOk]                   = useState(false);
+  const [diaActivo, setDiaActivo]   = useState("LUNES");
+  const [semanaOffset, setSemana]   = useState(0);
+  const [reservasPorSlot, setRes]   = useState({});
+  const [misReservas, setMisRes]    = useState({});
+  const [procesando, setProcesando] = useState(null);
+  const [ok, setOk]                 = useState(false);
 
-  // Fechas de la semana actual
+  // Fechas de la semana seleccionada
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const dow = hoy.getDay();
   const lunes = new Date(hoy);
-  lunes.setDate(hoy.getDate() - (dow===0?6:dow-1));
+  lunes.setDate(hoy.getDate() - (dow===0?6:dow-1) + semanaOffset*7);
   const fechas = {};
-  DIAS.forEach((dia,i)=>{
+  DIAS.forEach((dia,i) => {
     const d = new Date(lunes); d.setDate(lunes.getDate()+i);
     fechas[dia] = d.toISOString().split("T")[0];
   });
 
-  function getHorasDia(dia) {
-    const [ini,fin] = dia==="SABADO"?[8,13]:[7,22];
-    return Array.from({length:fin-ini+1},(_,i)=>String(i+ini).padStart(2,"0")+":00");
-  }
   const fmt = iso => { const [,m,d]=iso.split("-"); return d+"/"+m; };
+  const fechaLunes = fmt(fechas["LUNES"]);
+  const fechaSab   = fmt(fechas["SABADO"]);
 
-  // Escuchar reservas de la semana
-  useEffect(()=>{
+  useEffect(() => {
     const fechasArr = Object.values(fechas);
     const q = query(collection(db,"reservas"), where("fecha","in",fechasArr));
-    const fn = onSnapshot(q, snap=>{
-      const map={}; const mias={};
-      snap.docs.forEach(d=>{
+    const fn = onSnapshot(q, snap => {
+      const map={}, mias={};
+      snap.docs.forEach(d => {
         const r=d.data();
         const key=r.dia+"_"+r.hora.replace(":","")+"_"+r.fecha;
         if(!map[key]) map[key]=0;
@@ -569,14 +567,18 @@ function ModalRecuperacionFeriado({ turnoFijo, perfil, user, feriados, onCerrar 
       setRes(map); setMisRes(mias);
     });
     return fn;
-  },[]);
+  }, [semanaOffset]);
+
+  function getHorasDia(dia) {
+    const [ini,fin] = dia==="SABADO"?[8,13]:[7,22];
+    return Array.from({length:fin-ini+1},(_,i)=>String(i+ini).padStart(2,"0")+":00");
+  }
 
   async function reservarRecuperacion(dia, hora) {
     const fecha = fechas[dia];
     const key   = dia+"_"+hora.replace(":","")+"_"+fecha;
     if(misReservas[key]) return;
-    const ocupados = reservasPorSlot[key]||0;
-    if(ocupados>=15) return;
+    if((reservasPorSlot[key]||0)>=15) return;
     setProcesando(key);
     try {
       await addDoc(collection(db,"reservas"),{
@@ -584,12 +586,13 @@ function ModalRecuperacionFeriado({ turnoFijo, perfil, user, feriados, onCerrar 
         nombreAlumno: ((perfil?.nombre||"")+" "+(perfil?.apellido||"")).trim(),
         dia, hora, fecha,
         esFijo: false, esRecuperacion: true, esPorFeriado: true,
-        diaFijoOriginal: turnoFijo.diaFijo, horaFijoOriginal: turnoFijo.horaFijo,
+        diaFijoOriginal: turnoFijo.diaFijo,
+        horaFijoOriginal: turnoFijo.horaFijo,
         creadoEn: serverTimestamp(),
       });
       setOk(true);
-      setTimeout(()=>onCerrar(), 1800);
-    } catch(e){ console.error(e); alert("Error al reservar."); }
+      setTimeout(() => onCerrar(), 2000);
+    } catch(e) { console.error(e); alert("Error al reservar."); }
     setProcesando(null);
   }
 
@@ -597,22 +600,22 @@ function ModalRecuperacionFeriado({ turnoFijo, perfil, user, feriados, onCerrar 
 
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-      <div style={{background:"#fff",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:600,maxHeight:"85vh",overflow:"auto",padding:"20px 16px 40px"}}>
+      <div style={{background:"#fff",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:600,maxHeight:"88vh",overflow:"auto",padding:"20px 16px 48px"}}>
 
         {/* Header */}
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
           <div>
             <div style={{fontSize:16,fontWeight:500,color:"#111"}}>Elegir recuperación por feriado</div>
-            <div style={{fontSize:13,color:"#10b981",fontWeight:500}}>Gratis — no descuenta del contador 🎁</div>
+            <div style={{fontSize:12,color:"#10b981",fontWeight:500}}>Gratis · no descuenta del contador 🎁</div>
           </div>
           <button onClick={onCerrar}
-            style={{background:"#f5f5f5",border:"none",borderRadius:8,padding:"6px 12px",fontSize:18,cursor:"pointer",color:"#555"}}>
+            style={{background:"#f5f5f5",border:"none",borderRadius:8,padding:"6px 14px",fontSize:16,cursor:"pointer",color:"#555"}}>
             ✕
           </button>
         </div>
 
-        <div style={{background:"#f0fdf4",border:"1px solid #86efac",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:"#065f46"}}>
-          Tu turno fijo del {DIAS_FULL[turnoFijo.diaFijo]} {turnoFijo.horaFijo} es feriado. Elegí el día y horario donde querés recuperar.
+        <div style={{background:"#f0fdf4",border:"1px solid #86efac",borderRadius:10,padding:"9px 14px",marginBottom:14,fontSize:12,color:"#065f46"}}>
+          Tu turno fijo del <strong>{DIAS_FULL[turnoFijo.diaFijo]} {turnoFijo.horaFijo}</strong> es feriado. Elegí en qué semana, día y horario querés recuperar.
         </div>
 
         {ok && (
@@ -621,24 +624,41 @@ function ModalRecuperacionFeriado({ turnoFijo, perfil, user, feriados, onCerrar 
           </div>
         )}
 
-        {/* Selector días (sin el feriado) */}
+        {/* Nav semana */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:8}}>
+          <button onClick={() => setSemana(s=>s-1)}
+            style={{background:"#fff",border:"0.5px solid #e0e0e0",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontSize:15}}>←</button>
+          <span style={{fontSize:13,color:"#888",textAlign:"center"}}>{fechaLunes} — {fechaSab}</span>
+          <div style={{display:"flex",gap:6}}>
+            <button onClick={() => setSemana(s=>s+1)}
+              style={{background:"#fff",border:"0.5px solid #e0e0e0",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontSize:15}}>→</button>
+            <button onClick={() => setSemana(0)}
+              style={{background:"#F5C400",border:"none",borderRadius:8,padding:"7px 10px",cursor:"pointer",fontSize:12,fontWeight:500}}>Hoy</button>
+          </div>
+        </div>
+
+        {/* Selector días */}
         <div style={{display:"flex",gap:6,marginBottom:14,overflowX:"auto",paddingBottom:4}}>
-          {DIAS.map(dia=>{
+          {DIAS.map(dia => {
             const fecha  = fechas[dia];
             const esFer  = !!feriados[fecha];
-            const esFijoDia = turnoFijo.diaFijo===dia;
             const activo = diaActivo===dia;
             const tieneMia = Object.keys(misReservas).some(k=>k.startsWith(dia+"_")&&k.endsWith("_"+fecha));
-            if(esFer || esFijoDia) return (
-              <div key={dia} style={{flexShrink:0,minWidth:52,background:"#fee2e2",border:"0.5px solid #fecaca",borderRadius:10,padding:"8px 10px",textAlign:"center",opacity:0.5}}>
+            const pasadoDia = new Date(fecha) < new Date(new Date().toISOString().split("T")[0]);
+
+            if (esFer) return (
+              <div key={dia} style={{flexShrink:0,minWidth:52,background:"#fee2e2",borderRadius:10,padding:"8px 10px",textAlign:"center",opacity:0.5}}>
                 <div style={{fontSize:11,fontWeight:500,color:"#dc2626"}}>{DIAS_CORTO[dia]}</div>
                 <div style={{fontSize:11,color:"#dc2626"}}>{fmt(fecha)}</div>
-                <div style={{fontSize:9,color:"#dc2626"}}>{esFer?"Feriado":"Tu fijo"}</div>
+                <div style={{fontSize:9,color:"#dc2626"}}>Feriado</div>
               </div>
             );
             return (
-              <button key={dia} onClick={()=>setDiaActivo(dia)}
-                style={{flexShrink:0,minWidth:52,background:activo?"#111":"#fff",color:activo?"#fff":"#555",border:"0.5px solid "+(activo?"#111":"#e0e0e0"),borderRadius:10,padding:"8px 10px",cursor:"pointer",textAlign:"center",position:"relative"}}>
+              <button key={dia} onClick={() => setDiaActivo(dia)}
+                style={{flexShrink:0,minWidth:52,background:activo?"#111":"#fff",
+                  color:activo?"#fff":pasadoDia?"#ccc":"#555",
+                  border:"0.5px solid "+(activo?"#111":"#e0e0e0"),
+                  borderRadius:10,padding:"8px 10px",cursor:"pointer",textAlign:"center",position:"relative"}}>
                 <div style={{fontSize:11,fontWeight:500}}>{DIAS_CORTO[dia]}</div>
                 <div style={{fontSize:11,marginTop:2}}>{fmt(fecha)}</div>
                 {tieneMia&&<span style={{position:"absolute",bottom:4,left:"50%",transform:"translateX(-50%)",width:5,height:5,borderRadius:"50%",background:"#10b981",display:"block"}}/>}
@@ -648,29 +668,31 @@ function ModalRecuperacionFeriado({ turnoFijo, perfil, user, feriados, onCerrar 
         </div>
 
         {/* Horarios */}
-        <div style={{fontSize:13,fontWeight:500,color:"#888",marginBottom:8}}>
+        <div style={{fontSize:13,fontWeight:500,color:"#555",marginBottom:8}}>
           {DIAS_FULL[diaActivo]} {fmt(fechas[diaActivo])}
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {horasDia.map(hora=>{
+          {horasDia.map(hora => {
             const fecha   = fechas[diaActivo];
             const key     = diaActivo+"_"+hora.replace(":","")+"_"+fecha;
             const ocupados= reservasPorSlot[key]||0;
             const tengo   = !!misReservas[key];
             const lleno   = ocupados>=15&&!tengo;
             const pasado  = new Date(fecha+"T"+hora)<new Date();
-            const block   = lleno||pasado||tengo;
+            const block   = lleno||pasado;
             const isProc  = procesando===key;
 
             return (
-              <button key={hora} onClick={()=>!block&&!isProc&&reservarRecuperacion(diaActivo,hora)}
-                disabled={block||isProc}
+              <button key={hora}
+                onClick={() => !block&&!isProc&&!tengo&&reservarRecuperacion(diaActivo,hora)}
+                disabled={block||isProc||tengo}
                 style={{
                   background: tengo?"#dcfce7":lleno?"#f9f9f9":pasado?"#f9f9f9":"#fff",
                   border:"1.5px solid "+(tengo?"#86efac":lleno||pasado?"#f0f0f0":"#e0e0e0"),
-                  borderRadius:12,padding:"13px 14px",cursor:block?"default":"pointer",
+                  borderRadius:12,padding:"13px 14px",
+                  cursor:block||tengo?"default":"pointer",
                   display:"flex",alignItems:"center",justifyContent:"space-between",
-                  opacity:isProc?0.6:1
+                  opacity:isProc?0.6:1,
                 }}>
                 <div style={{display:"flex",alignItems:"center",gap:12}}>
                   <span style={{fontSize:17,fontWeight:500,color:block&&!tengo?"#ccc":"#111",minWidth:52}}>{hora}</span>
@@ -683,11 +705,11 @@ function ModalRecuperacionFeriado({ turnoFijo, perfil, user, feriados, onCerrar 
                 </div>
                 <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3}}>
                   <span style={{fontSize:11,color:"#aaa"}}>{ocupados}/15</span>
-                  {tengo   && <span style={{fontSize:11,fontWeight:500,color:"#065f46",background:"#dcfce7",padding:"2px 8px",borderRadius:20}}>✓ Reservado</span>}
-                  {lleno   && <span style={{fontSize:11,color:"#92400e",background:"#fef3c7",padding:"2px 8px",borderRadius:20}}>Lleno</span>}
-                  {pasado  && <span style={{fontSize:11,color:"#aaa",background:"#f5f5f5",padding:"2px 8px",borderRadius:20}}>Pasado</span>}
-                  {!block  && <span style={{fontSize:11,color:"#065f46",background:"#dcfce7",padding:"2px 8px",borderRadius:20}}>Gratis 🎁</span>}
-                  {isProc  && <span style={{fontSize:11,color:"#888"}}>Reservando...</span>}
+                  {tengo  && <span style={{fontSize:11,fontWeight:500,color:"#065f46",background:"#dcfce7",padding:"2px 8px",borderRadius:20}}>✓ Reservado</span>}
+                  {lleno  && <span style={{fontSize:11,color:"#92400e",background:"#fef3c7",padding:"2px 8px",borderRadius:20}}>Lleno</span>}
+                  {pasado && <span style={{fontSize:11,color:"#aaa",background:"#f5f5f5",padding:"2px 8px",borderRadius:20}}>Pasado</span>}
+                  {!block&&!tengo && <span style={{fontSize:11,color:"#065f46",background:"#dcfce7",padding:"2px 8px",borderRadius:20}}>Gratis 🎁</span>}
+                  {isProc && <span style={{fontSize:11,color:"#888"}}>Reservando...</span>}
                 </div>
               </button>
             );
