@@ -6,7 +6,12 @@ import { db } from "../firebase";
 
 // Resetea recuperaciones el 1 de cada mes
 // Marca cuota como vencida si paso la fecha
+let ultimoMantenimiento = null;
+
 export async function correrMantenimiento() {
+  const hoy = new Date().toDateString();
+  if (ultimoMantenimiento === hoy) return; // ya corrió hoy en esta sesión
+  ultimoMantenimiento = hoy;
   const hoy = new Date();
   const snap = await getDocs(collection(db, "usuarios"));
   const alumnos = snap.docs
