@@ -9,9 +9,9 @@ import { db } from "../firebase";
 let ultimoMantenimiento = null;
 
 export async function correrMantenimiento() {
-  const hoy = new Date().toDateString();
-  if (ultimoMantenimiento === hoy) return; // ya corrió hoy en esta sesión
-  ultimoMantenimiento = hoy;
+  const hoyStr = new Date().toDateString();
+  if (ultimoMantenimiento === hoyStr) return; // ya corrió hoy en esta sesión
+  ultimoMantenimiento = hoyStr;
   const hoy = new Date();
   const snap = await getDocs(collection(db, "usuarios"));
   const alumnos = snap.docs
