@@ -64,10 +64,10 @@ export default function ConfigGimnasio() {
     setHaciendoBackup(false);
   }
 
-  if (!config) return <p style={{ color: "#888", padding: 20 }}>Cargando configuración...</p>;
-
   return (
     <div style={{ maxWidth: 680 }}>
+      {!config && <p style={{ color: "#888", padding: 20 }}>Cargando configuración...</p>}
+      {config && <>
       <h2 style={{ fontSize: 18, fontWeight: 500, marginBottom: 24 }}>Configuración del gimnasio</h2>
 
       {/* Datos básicos */}
@@ -159,6 +159,7 @@ export default function ConfigGimnasio() {
           {haciendoBackup ? "Generando..." : "💾 Descargar copia de seguridad"}
         </button>
       </div>
+    </>}
     </div>
   );
 }
