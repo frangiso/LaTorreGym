@@ -1,6 +1,6 @@
 import { exportarBackupExcel } from "../../utils/exportarExcel";
 import { useEffect, useState } from "react";
-import { doc, getDoc, setDoc, getDocs, collection, query, where } from "firebase/firestore";
+import { doc, getDoc, setDoc, getDocs, deleteDoc, collection, query, where, writeBatch, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase";
 
 export default function ConfigGimnasio() {
@@ -166,6 +166,9 @@ function Field({ label, children }) {
     <div style={{ marginBottom: 10 }}>
       <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>{label}</label>
       {children}
+      {/* ====== CIERRE TEMPORARIO ====== */}
+      <CierreTemporario db={db} />
+
       {/* ====== BACKUP ====== */}
       <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid #e0e0e0" }}>
         <h3 style={{ fontSize: 15, fontWeight: 500, color: "#111", margin: "0 0 6px" }}>Copia de seguridad</h3>
@@ -197,6 +200,162 @@ function Field({ label, children }) {
             display: "flex", alignItems: "center", gap: 8,
           }}>
           {haciendoBackup ? "Generando backup..." : "💾 Descargar copia de seguridad"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---- Componente de Cierre Temporario ----
+function CierreTemporario({ db }) {
+  const [desde, setDesde]         = useState("");
+  const [hasta, setHasta]         = useState("");
+  const [procesando, setProcesando] = useState(false);
+  const [resultado, setResultado] = useState(null);
+
+  async function aplicarCierre() {
+    if (!desde || !hasta) { alert("Ingresá las fechas de inicio y fin."); return; }
+    if (desde > hasta) { alert("La fecha de inicio debe ser antes que la de fin."); return; }
+    if (!confirm(`¿Bloquear del ${desde} al ${hasta} y cancelar todas las reservas de ese período?`)) return;
+
+    setProcesando(true);
+    setResultado(null);
+    try {
+      // 1. Generar todas las fechas del rango
+      const fechas = [];
+      const d = new Date(desde + "T00:00:00");
+      const fin = new Date(hasta + "T00:00:00");
+      while (d <= fin) {
+        fechas.push(d.toISOString().split("T")[0]);
+        d.setDate(d.getDate() + 1);
+      }
+
+      // 2. Marcar como feriado cada fecha
+      const batchFer = writeBatch(db);
+      fechas.forEach(fecha => {
+        batchFer.set(doc(db, "feriados", fecha), { fecha, creadoEn: new Date(), esCierre: true });
+      });
+      await batchFer.commit();
+
+      // 3. Buscar y cancelar reservas en ese período
+      let totalCanceladas = 0;
+      for (let i = 0; i < fechas.length; i += 10) {
+        const chunk = fechas.slice(i, i + 10);
+        const q = query(collection(db, "reservas"), where("fecha", "in", chunk));
+        const snap = await getDocs(q);
+        if (snap.docs.length > 0) {
+          const batch = writeBatch(db);
+          snap.docs.forEach(d => batch.delete(doc(db, "reservas", d.id)));
+          await batch.commit();
+          totalCanceladas += snap.docs.length;
+        }
+      }
+
+      setResultado({ fechas: fechas.length, canceladas: totalCanceladas });
+      setDesde(""); setHasta("");
+    } catch(e) {
+      console.error(e);
+      alert("Error: " + e.message);
+    }
+    setProcesando(false);
+  }
+
+  async function levantarCierre() {
+    if (!desde || !hasta) { alert("Ingresá el rango de fechas a levantar."); return; }
+    if (!confirm(`¿Levantar el cierre del ${desde} al ${hasta}?`)) return;
+
+    setProcesando(true);
+    try {
+      const fechas = [];
+      const d = new Date(desde + "T00:00:00");
+      const fin = new Date(hasta + "T00:00:00");
+      while (d <= fin) {
+        fechas.push(d.toISOString().split("T")[0]);
+        d.setDate(d.getDate() + 1);
+      }
+
+      // Solo borrar los que tienen esCierre: true
+      for (let i = 0; i < fechas.length; i += 10) {
+        const chunk = fechas.slice(i, i + 10);
+        const q = query(
+          collection(db, "feriados"),
+          where("esCierre", "==", true)
+        );
+        const snap = await getDocs(q);
+        const aEliminar = snap.docs.filter(d => chunk.includes(d.data().fecha));
+        if (aEliminar.length > 0) {
+          const batch = writeBatch(db);
+          aEliminar.forEach(d => batch.delete(doc(db, "feriados", d.id)));
+          await batch.commit();
+        }
+      }
+
+      setResultado({ levantado: true, fechas: fechas.length });
+      setDesde(""); setHasta("");
+    } catch(e) {
+      console.error(e);
+      alert("Error: " + e.message);
+    }
+    setProcesando(false);
+  }
+
+  const inp = {
+    padding: "9px 12px", borderRadius: 8, border: "0.5px solid #e0e0e0",
+    fontSize: 14, width: "100%", boxSizing: "border-box", background: "#fff",
+  };
+
+  return (
+    <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid #e0e0e0" }}>
+      <h3 style={{ fontSize: 15, fontWeight: 500, color: "#111", margin: "0 0 6px" }}>Cierre temporario</h3>
+      <p style={{ fontSize: 13, color: "#888", margin: "0 0 16px", lineHeight: 1.5 }}>
+        Bloqueá un rango de fechas por vacaciones o mantenimiento. Se cancelan automáticamente
+        todas las reservas de ese período.
+      </p>
+
+      {resultado && (
+        <div style={{
+          background: resultado.levantado ? "#dcfce7" : "#fef3c7",
+          border: "1px solid " + (resultado.levantado ? "#86efac" : "#fcd34d"),
+          borderRadius: 10, padding: "12px 16px", marginBottom: 16
+        }}>
+          {resultado.levantado
+            ? <p style={{ fontSize: 13, color: "#065f46", margin: 0 }}>✓ Cierre levantado — {resultado.fechas} días liberados.</p>
+            : <p style={{ fontSize: 13, color: "#92400e", margin: 0 }}>✓ {resultado.fechas} días bloqueados — {resultado.canceladas} reservas canceladas.</p>
+          }
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+        <div>
+          <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>Desde</label>
+          <input type="date" value={desde} onChange={e => setDesde(e.target.value)}
+            min={new Date().toISOString().split("T")[0]} style={inp} />
+        </div>
+        <div>
+          <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 4 }}>Hasta</label>
+          <input type="date" value={hasta} onChange={e => setHasta(e.target.value)}
+            min={desde || new Date().toISOString().split("T")[0]} style={inp} />
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={aplicarCierre} disabled={procesando || !desde || !hasta}
+          style={{
+            background: desde && hasta ? "#dc2626" : "#e0e0e0",
+            color: desde && hasta ? "#fff" : "#aaa",
+            border: "none", borderRadius: 10, padding: "11px 20px",
+            fontSize: 13, fontWeight: 500, cursor: desde && hasta ? "pointer" : "default",
+          }}>
+          {procesando ? "Procesando..." : "🔒 Aplicar cierre"}
+        </button>
+        <button onClick={levantarCierre} disabled={procesando || !desde || !hasta}
+          style={{
+            background: "transparent",
+            border: "0.5px solid #e0e0e0",
+            borderRadius: 10, padding: "11px 20px",
+            fontSize: 13, color: "#555", cursor: desde && hasta ? "pointer" : "default",
+          }}>
+          🔓 Levantar cierre
         </button>
       </div>
     </div>

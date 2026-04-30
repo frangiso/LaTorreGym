@@ -96,6 +96,7 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
     planId:              a.planId || "",
     metodoPago:          a.metodoPago || "efectivo",
     clasesUsadasMes:     a.clasesUsadasMes ?? 0,
+    recuperacionesUsadas: a.recuperacionesUsadas ?? 0,
   });
   // turnosFijos: [{ dia, hora }]
   const [turnosFijos, setTurnosFijos] = useState(a.turnosFijos || []);
@@ -135,6 +136,7 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
       planNombre:         plan ? plan.nombre : null,
       metodoPago:         form.metodoPago,
       clasesUsadasMes:    Number(form.clasesUsadasMes),
+      recuperacionesUsadas: Number(form.recuperacionesUsadas ?? 0),
       turnosFijos,
       turnosFijosEstado: turnosFijos.length > 0 ? "aprobado" : null,
     };
@@ -308,6 +310,32 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
                   <div>
                     <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 3 }}>Clases usadas este mes</label>
                     <input type="number" name="clasesUsadasMes" value={form.clasesUsadasMes} onChange={handleChange} min="0" style={inp} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 3 }}>
+                      Recuperaciones usadas ({form.recuperacionesUsadas ?? 0}/2)
+                    </label>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input type="number" name="recuperacionesUsadas" value={form.recuperacionesUsadas ?? 0}
+                        onChange={handleChange} min="0" max="2" style={{ ...inp, flex: 1 }} />
+                      <button type="button"
+                        onClick={() => setForm(f => ({ ...f, recuperacionesUsadas: Math.max(0, (f.recuperacionesUsadas ?? 1) - 1) }))}
+                        disabled={(form.recuperacionesUsadas ?? 0) <= 0}
+                        title="Devolver 1 recuperación por ausencia justificada"
+                        style={{
+                          background: (form.recuperacionesUsadas ?? 0) > 0 ? "#dcfce7" : "#f5f5f5",
+                          color: (form.recuperacionesUsadas ?? 0) > 0 ? "#065f46" : "#ccc",
+                          border: "none", borderRadius: 8, padding: "8px 10px",
+                          fontSize: 12, fontWeight: 500,
+                          cursor: (form.recuperacionesUsadas ?? 0) > 0 ? "pointer" : "default",
+                          whiteSpace: "nowrap", flexShrink: 0,
+                        }}>
+                        ↩ Devolver
+                      </button>
+                    </div>
+                    <p style={{ fontSize: 11, color: "#aaa", margin: "3px 0 0" }}>
+                      Usá "Devolver" si el alumno faltó por causa justificada.
+                    </p>
                   </div>
                 </div>
               </>
