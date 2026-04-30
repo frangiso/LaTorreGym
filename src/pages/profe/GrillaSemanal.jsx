@@ -30,16 +30,16 @@ const CUPO = 15;
 
 export default function GrillaSemanal() {
   const { feriados: feriadosCtx }       = useData();
-  const [feriados, setFeriados]         = useState({});
+  const [feriadosLocal, setFeriadosLocal] = useState({});
+  const feriados = Object.keys(feriadosLocal).length > 0 ? feriadosLocal : feriadosCtx;
   const [semanaOffset, setSemanaOffset] = useState(0);
   const [reservasPorSlot, setReservasPorSlot] = useState({});
-  const [feriados, setFeriados] = useState({});
   const [modalSlot, setModalSlot] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [modalAgregar, setModalAgregar] = useState(false);
 
-  // Sincronizar con contexto (actualizaciones del profe se reflejan de inmediato)
-  useEffect(() => { setFeriados(feriadosCtx); }, [feriadosCtx]);
+  // Sincronizar local con contexto
+  useEffect(() => { setFeriadosLocal(feriadosCtx); }, [feriadosCtx]);
 
   const inicioSemana = getInicioSemana(semanaOffset);
   const fechas = getFechasDeSemana(inicioSemana);
@@ -65,10 +65,10 @@ export default function GrillaSemanal() {
   async function toggleFeriado(fecha) {
     if (feriados[fecha]) {
       await deleteDoc(doc(db, "feriados", fecha));
-      setFeriados(f => { const n={...f}; delete n[fecha]; return n; });
+      setFeriadosLocal(f => { const n={...f}; delete n[fecha]; return n; });
     } else {
       await setDoc(doc(db, "feriados", fecha), { fecha, creadoEn: new Date() });
-      setFeriados(f => ({ ...f, [fecha]: true }));
+      setFeriadosLocal(f => ({ ...f, [fecha]: true }));
     }
   }
 
