@@ -1,6 +1,6 @@
-import { generarReservasFijas } from "../../reservasFijas";
+import { generarReservasFijas, borrarReservasFijas } from "../../reservasFijas";
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, doc, updateDoc, getDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, getDoc, deleteDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import ModalAgregarAlumno from "./ModalAgregarAlumno";
 
@@ -180,6 +180,23 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
     setGuardando(false);
     setOk(true);
     setTimeout(() => { setOk(false); onCerrar(); }, 1200);
+  }
+
+  async function eliminarAlumno() {
+    const nombre = a.nombre + " " + a.apellido;
+    if (!confirm("¿Eliminar a " + nombre + "? Esta acción no se puede deshacer.")) return;
+    if (!confirm("Segunda confirmación: ¿estás seguro de eliminar a " + nombre + "?")) return;
+    setGuardando(true);
+    try {
+      // Borrar reservas futuras
+      await borrarReservasFijas(a.uid);
+      // Borrar perfil
+      await deleteDoc(doc(db, "usuarios", a.uid));
+    } catch(e) {
+      console.error(e);
+      alert("Error al eliminar. Intentá de nuevo.");
+    }
+    setGuardando(false);
   }
 
   const inp = {
@@ -362,6 +379,10 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
 
             {/* Botones */}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 16 }}>
+              <button onClick={eliminarAlumno} disabled={guardando}
+                style={{ background: "#fee2e2", color: "#dc2626", border: "none", borderRadius: 8, padding: "9px 14px", fontSize: 13, cursor: "pointer" }}>
+                🗑 Eliminar alumno
+              </button>
               <button onClick={guardar} disabled={guardando}
                 style={{ background: ok ? "#10b981" : "#F5C400", color: "#111", border: "none", borderRadius: 8, padding: "9px 20px", fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
                 {ok ? "Guardado" : guardando ? "Guardando..." : "Guardar cambios"}
