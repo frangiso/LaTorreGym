@@ -76,6 +76,17 @@ export async function correrMantenimiento() {
         // Resetear turnos fijos — debe volver a elegirlos cuando renueve
         updates.turnosFijos = [];
         updates.turnosFijosEstado = null;
+        // Notificar al alumno que venció su plan
+        try {
+          const { addDoc, collection, serverTimestamp } = await import("firebase/firestore");
+          const { db } = await import("../firebase");
+          await addDoc(collection(db, "notificaciones"), {
+            alumnoId: alumno.uid,
+            tipo:     "plan_vencido",
+            leido:    false,
+            creadoEn: serverTimestamp(),
+          });
+        } catch(e) { console.error("Error notificando vencimiento:", e); }
         // Borrar reservas fijas futuras
         try {
           const { borrarReservasFijas } = await import("../reservasFijas.js");
