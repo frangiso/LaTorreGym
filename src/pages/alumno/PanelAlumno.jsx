@@ -53,6 +53,7 @@ export default function PanelAlumno() {
   const [procesando, setProcesando]           = useState(null);
   const [confirmando, setConfirmando]         = useState(null);
   const [modalRecFeriado, setModalRecFeriado] = useState(null); // { diaFijo, horaFijo }
+  const [notificacion, setNotificacion]       = useState(null); // notif activa
   const [diaSeleccionado, setDiaSeleccionado] = useState(null);
   const [vistaAlumno, setVistaAlumno]         = useState("turnos");
   const { avisos, feriados }                  = useData();
@@ -71,9 +72,23 @@ export default function PanelAlumno() {
   const necesitaFijos    = !esSuelta && planId && !tienesFijos && perfil?.turnosFijosEstado !== "pendiente";
   const pendienteFijos   = perfil?.turnosFijosEstado === "pendiente";
 
-  const vence = perfil?.fechaVencimiento
-    ? new Date(perfil.fechaVencimiento.toDate?.() || perfil.fechaVencimiento).toLocaleDateString("es-AR")
+  const fechaVence = perfil?.fechaVencimiento
+    ? new Date(perfil.fechaVencimiento.toDate?.() || perfil.fechaVencimiento)
     : null;
+  const vence = fechaVence ? fechaVence.toLocaleDateString("es-AR") : null;
+  const diasRestantes = fechaVence
+    ? Math.ceil((fechaVence - new Date()) / (1000*60*60*24))
+    : null;
+  const colorVence = diasRestantes === null ? "#aaa"
+    : diasRestantes <= 0  ? "#dc2626"
+    : diasRestantes <= 3  ? "#dc2626"
+    : diasRestantes <= 7  ? "#f59e0b"
+    : "#10b981";
+  const textoVence = diasRestantes === null ? null
+    : diasRestantes <= 0  ? "⚠️ Plan vencido — contactá al profe para renovar"
+    : diasRestantes === 1 ? "⚠️ Vence mañana — " + vence
+    : diasRestantes <= 7  ? "⚠️ Vence en " + diasRestantes + " días — " + vence
+    : "Vence " + vence;
 
   useEffect(() => {
     const map = [null,"LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
@@ -93,6 +108,28 @@ export default function PanelAlumno() {
       setEnEspera(map);
     });
     return () => unsub();
+  }, [user]);
+
+  // Listener de notificaciones del profe
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, "notificaciones"),
+      where("alumnoId", "==", user.uid),
+      where("leido", "==", false)
+    );
+    const fn = onSnapshot(q, snap => {
+      if (!snap.empty) {
+        // Mostrar la más reciente
+        const notifs = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .sort((a,b) => (b.creadoEn?.seconds||0) - (a.creadoEn?.seconds||0));
+        setNotificacion(notifs[0]);
+      } else {
+        setNotificacion(null);
+      }
+    });
+    return fn;
   }, [user]);
 
   useEffect(() => {
@@ -283,7 +320,11 @@ export default function PanelAlumno() {
               <div>
                 <div style={{ fontSize: 11, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.06em" }}>Plan</div>
                 <div style={{ fontSize: 15, fontWeight: 500, color: "#111", marginTop: 2 }}>{perfil?.planNombre || "Sin plan"}</div>
-                {vence && <div style={{ fontSize: 12, color: "#aaa", marginTop: 2 }}>Vence {vence}</div>}
+                {textoVence && (
+                  <div style={{ fontSize: 12, color: colorVence, marginTop: 4, fontWeight: diasRestantes !== null && diasRestantes <= 7 ? 500 : 400 }}>
+                    {textoVence}
+                  </div>
+                )}
               </div>
               {!esSuelta && tienesFijos && (
                 <div style={{ textAlign: "center", background: recDisp === 0 ? "#fee2e2" : "#f0fdf4", borderRadius: 10, padding: "8px 14px" }}>
@@ -502,6 +543,21 @@ export default function PanelAlumno() {
         </>)}
       </div>
 
+      {/* Modal notificación del profe */}
+      {notificacion && (
+        <ModalNotificacion
+          notificacion={notificacion}
+          perfil={perfil}
+          user={user}
+          feriados={feriados}
+          onCerrar={async () => {
+            // Marcar como leída
+            await updateDoc(doc(db, "notificaciones", notificacion.id), { leido: true });
+            setNotificacion(null);
+          }}
+        />
+      )}
+
       {/* Modal recuperación por feriado */}
       {modalRecFeriado && (
         <ModalRecuperacionFeriado
@@ -707,6 +763,227 @@ function ModalRecuperacionFeriado({ turnoFijo, perfil, user, feriados, onCerrar 
             );
           })}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- Modal de Notificación del Profe ----
+function ModalNotificacion({ notificacion, perfil, user, feriados, onCerrar }) {
+  const DIAS = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
+  const DIAS_FULL = { LUNES:"Lunes", MARTES:"Martes", MIERCOLES:"Miercoles", JUEVES:"Jueves", VIERNES:"Viernes", SABADO:"Sabado" };
+  const DIAS_CORTO = { LUNES:"Lun", MARTES:"Mar", MIERCOLES:"Mie", JUEVES:"Jue", VIERNES:"Vie", SABADO:"Sab" };
+
+  const [semanaOffset, setSemana]   = useState(0);
+  const [diaActivo, setDiaActivo]   = useState("LUNES");
+  const [reservasPorSlot, setRes]   = useState({});
+  const [misReservas, setMisRes]    = useState({});
+  const [procesando, setProcesando] = useState(null);
+  const [ok, setOk]                 = useState(false);
+  const [mostrarGrilla, setMostrarGrilla] = useState(false);
+
+  const esPlanVencido = notificacion.tipo === "plan_vencido";
+  const esFijoCancelado = notificacion.tipo === "fijo_cancelado";
+
+  // Fechas de la semana
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const dow = hoy.getDay();
+  const lunes = new Date(hoy);
+  lunes.setDate(hoy.getDate() - (dow===0?6:dow-1) + semanaOffset*7);
+  const fechas = {};
+  DIAS.forEach((dia,i) => {
+    const d = new Date(lunes); d.setDate(lunes.getDate()+i);
+    fechas[dia] = d.toISOString().split("T")[0];
+  });
+  const fmt = iso => { const [,m,d]=iso.split("-"); return d+"/"+m; };
+
+  useEffect(() => {
+    if (!mostrarGrilla) return;
+    const fechasArr = Object.values(fechas);
+    const q = query(collection(db,"reservas"), where("fecha","in",fechasArr));
+    const fn = onSnapshot(q, snap => {
+      const map={}, mias={};
+      snap.docs.forEach(d => {
+        const r=d.data();
+        const key=r.dia+"_"+r.hora.replace(":","")+"_"+r.fecha;
+        if(!map[key]) map[key]=0; map[key]++;
+        if(r.alumnoId===user.uid) mias[key]=d.id;
+      });
+      setRes(map); setMisRes(mias);
+    });
+    return fn;
+  }, [semanaOffset, mostrarGrilla]);
+
+  function getHoras(dia) {
+    const [ini,fin] = dia==="SABADO"?[8,13]:[7,22];
+    return Array.from({length:fin-ini+1},(_,i)=>String(i+ini).padStart(2,"0")+":00");
+  }
+
+  async function reservarExcepcion(dia, hora) {
+    const fecha = fechas[dia];
+    const key = dia+"_"+hora.replace(":","")+"_"+fecha;
+    if(misReservas[key] || (reservasPorSlot[key]||0)>=15) return;
+    setProcesando(key);
+    try {
+      await addDoc(collection(db,"reservas"),{
+        alumnoId: user.uid,
+        nombreAlumno: ((perfil?.nombre||"")+" "+(perfil?.apellido||"")).trim(),
+        dia, hora, fecha,
+        esFijo: false,          // NO queda fijo — es excepción
+        esRecuperacion: false,
+        esExcepcion: true,      // marcado como excepción por cancelación del profe
+        creadoEn: serverTimestamp(),
+      });
+      setOk(true);
+      setTimeout(() => onCerrar(), 2000);
+    } catch(e) { alert("Error al reservar: "+e.message); }
+    setProcesando(null);
+  }
+
+  const overlay = { position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center" };
+  const sheet   = { background:"#fff",borderRadius:"16px 16px 0 0",width:"100%",maxWidth:600,maxHeight:"90vh",overflow:"auto",padding:"20px 16px 48px" };
+
+  // Pantalla de plan vencido
+  if (esPlanVencido) return (
+    <div style={overlay}>
+      <div style={{...sheet, textAlign:"center", padding:"32px 24px 48px"}}>
+        <div style={{fontSize:40,marginBottom:12}}>⏰</div>
+        <h2 style={{fontSize:18,fontWeight:600,color:"#dc2626",marginBottom:8}}>Tu plan venció</h2>
+        <p style={{fontSize:14,color:"#555",lineHeight:1.6,marginBottom:24}}>
+          Tu membresía expiró. Para seguir reservando turnos necesitás renovar tu plan con el profe.
+        </p>
+        <button onClick={onCerrar}
+          style={{background:"#F5C400",color:"#111",border:"none",borderRadius:10,padding:"12px 28px",fontSize:14,fontWeight:600,cursor:"pointer"}}>
+          Entendido
+        </button>
+      </div>
+    </div>
+  );
+
+  // Pantalla de turno cancelado
+  return (
+    <div style={overlay}>
+      <div style={sheet}>
+        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:12}}>
+          <div>
+            <div style={{fontSize:16,fontWeight:600,color:"#dc2626"}}>
+              {esFijoCancelado ? "⚠️ Tu turno fijo fue cancelado" : "⚠️ Tu turno fue cancelado"}
+            </div>
+            <div style={{fontSize:13,color:"#888",marginTop:2}}>
+              {DIAS_FULL[notificacion.dia]} {notificacion.hora} — {fmt(notificacion.fecha)}
+            </div>
+          </div>
+          <button onClick={onCerrar}
+            style={{background:"#f5f5f5",border:"none",borderRadius:8,padding:"6px 12px",fontSize:14,cursor:"pointer",color:"#555"}}>
+            ✕
+          </button>
+        </div>
+
+        {ok && (
+          <div style={{background:"#dcfce7",border:"1px solid #86efac",borderRadius:10,padding:"12px",marginBottom:12,textAlign:"center",fontSize:14,fontWeight:500,color:"#065f46"}}>
+            ✓ ¡Reserva realizada!
+          </div>
+        )}
+
+        {!mostrarGrilla ? (
+          <div style={{textAlign:"center",padding:"16px 0"}}>
+            <p style={{fontSize:14,color:"#555",lineHeight:1.6,marginBottom:20}}>
+              {esFijoCancelado
+                ? "El profe canceló tu turno fijo de esta semana. Podés elegir otro horario como excepción (no queda fijo)."
+                : "El profe canceló tu turno. Podés elegir otro horario disponible."}
+            </p>
+            <button onClick={() => setMostrarGrilla(true)}
+              style={{background:"#111",color:"#F5C400",border:"none",borderRadius:10,padding:"12px 24px",fontSize:14,fontWeight:500,cursor:"pointer",marginRight:8}}>
+              Elegir otro horario
+            </button>
+            <button onClick={onCerrar}
+              style={{background:"transparent",border:"0.5px solid #e0e0e0",borderRadius:10,padding:"12px 16px",fontSize:14,color:"#555",cursor:"pointer"}}>
+              Ahora no
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Nav semana */}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:8}}>
+              <button onClick={() => setSemana(s=>s-1)}
+                style={{background:"#fff",border:"0.5px solid #e0e0e0",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontSize:15}}>←</button>
+              <span style={{fontSize:13,color:"#888"}}>{fmt(fechas["LUNES"])} — {fmt(fechas["SABADO"])}</span>
+              <div style={{display:"flex",gap:6}}>
+                <button onClick={() => setSemana(s=>s+1)}
+                  style={{background:"#fff",border:"0.5px solid #e0e0e0",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontSize:15}}>→</button>
+                <button onClick={() => setSemana(0)}
+                  style={{background:"#F5C400",border:"none",borderRadius:8,padding:"7px 10px",cursor:"pointer",fontSize:12,fontWeight:500}}>Hoy</button>
+              </div>
+            </div>
+
+            {/* Selector días */}
+            <div style={{display:"flex",gap:6,marginBottom:14,overflowX:"auto",paddingBottom:4}}>
+              {DIAS.map(dia => {
+                const fecha = fechas[dia];
+                const esFer = !!feriados[fecha];
+                const activo = diaActivo===dia;
+                const tieneMia = Object.keys(misReservas).some(k=>k.startsWith(dia+"_")&&k.endsWith("_"+fecha));
+                if(esFer) return (
+                  <div key={dia} style={{flexShrink:0,minWidth:52,background:"#fee2e2",borderRadius:10,padding:"8px 10px",textAlign:"center",opacity:0.5}}>
+                    <div style={{fontSize:11,fontWeight:500,color:"#dc2626"}}>{DIAS_CORTO[dia]}</div>
+                    <div style={{fontSize:11,color:"#dc2626"}}>{fmt(fecha)}</div>
+                    <div style={{fontSize:9,color:"#dc2626"}}>Feriado</div>
+                  </div>
+                );
+                return (
+                  <button key={dia} onClick={() => setDiaActivo(dia)}
+                    style={{flexShrink:0,minWidth:52,background:activo?"#111":"#fff",color:activo?"#fff":"#555",
+                      border:"0.5px solid "+(activo?"#111":"#e0e0e0"),borderRadius:10,padding:"8px 10px",cursor:"pointer",textAlign:"center",position:"relative"}}>
+                    <div style={{fontSize:11,fontWeight:500}}>{DIAS_CORTO[dia]}</div>
+                    <div style={{fontSize:11,marginTop:2}}>{fmt(fecha)}</div>
+                    {tieneMia&&<span style={{position:"absolute",bottom:4,left:"50%",transform:"translateX(-50%)",width:5,height:5,borderRadius:"50%",background:"#10b981",display:"block"}}/>}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Horarios */}
+            <div style={{fontSize:13,fontWeight:500,color:"#555",marginBottom:8}}>{DIAS_FULL[diaActivo]} {fmt(fechas[diaActivo])}</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {getHoras(diaActivo).map(hora => {
+                const fecha = fechas[diaActivo];
+                const key = diaActivo+"_"+hora.replace(":","")+"_"+fecha;
+                const ocupados = reservasPorSlot[key]||0;
+                const tengo = !!misReservas[key];
+                const lleno = ocupados>=15&&!tengo;
+                const pasado = new Date(fecha+"T"+hora)<new Date();
+                const block = lleno||pasado;
+                const isProc = procesando===key;
+                return (
+                  <button key={hora} onClick={() => !block&&!isProc&&!tengo&&reservarExcepcion(diaActivo,hora)}
+                    disabled={block||isProc||tengo}
+                    style={{background:tengo?"#dcfce7":lleno?"#f9f9f9":pasado?"#f9f9f9":"#fff",
+                      border:"1.5px solid "+(tengo?"#86efac":lleno||pasado?"#f0f0f0":"#e0e0e0"),
+                      borderRadius:12,padding:"13px 14px",cursor:block||tengo?"default":"pointer",
+                      display:"flex",alignItems:"center",justifyContent:"space-between",opacity:isProc?0.6:1}}>
+                    <div style={{display:"flex",alignItems:"center",gap:12}}>
+                      <span style={{fontSize:17,fontWeight:500,color:block&&!tengo?"#ccc":"#111",minWidth:52}}>{hora}</span>
+                      <div style={{display:"flex",gap:3,flexWrap:"wrap",maxWidth:110}}>
+                        {Array.from({length:15},(_,i)=>(
+                          <span key={i} style={{width:7,height:7,borderRadius:"50%",flexShrink:0,
+                            background:i<ocupados?(tengo?"#10b981":"#f59e0b"):"#e8e8e8"}}/>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3}}>
+                      <span style={{fontSize:11,color:"#aaa"}}>{ocupados}/15</span>
+                      {tengo  && <span style={{fontSize:11,fontWeight:500,color:"#065f46",background:"#dcfce7",padding:"2px 8px",borderRadius:20}}>✓ Reservado</span>}
+                      {lleno  && <span style={{fontSize:11,color:"#92400e",background:"#fef3c7",padding:"2px 8px",borderRadius:20}}>Lleno</span>}
+                      {pasado && <span style={{fontSize:11,color:"#aaa",background:"#f5f5f5",padding:"2px 8px",borderRadius:20}}>Pasado</span>}
+                      {!block&&!tengo && <span style={{fontSize:11,color:"#065f46",background:"#dcfce7",padding:"2px 8px",borderRadius:20}}>Disponible</span>}
+                      {isProc && <span style={{fontSize:11,color:"#888"}}>Reservando...</span>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
