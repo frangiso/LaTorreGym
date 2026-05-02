@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import ModalAgregarAlumno from "./ModalAgregarAlumno";
-import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where, updateDoc } from "firebase/firestore";
+import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where, updateDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useData } from "../../context/DataContext";
 
@@ -218,7 +218,20 @@ function ModalSlot({ slot, onClose }) {
 
   async function cancelarReserva(reservaId) {
     setCancelando(reservaId);
+    const reserva = reservas.find(r => r.id === reservaId);
     await deleteDoc(doc(db, "reservas", reservaId));
+    // Notificar al alumno
+    if (reserva?.alumnoId) {
+      await addDoc(collection(db, "notificaciones"), {
+        alumnoId:  reserva.alumnoId,
+        tipo:      reserva.esFijo ? "fijo_cancelado" : "turno_cancelado",
+        dia:       reserva.dia,
+        hora:      reserva.hora,
+        fecha:     reserva.fecha,
+        leido:     false,
+        creadoEn:  serverTimestamp(),
+      });
+    }
     setReservas(prev => prev.filter(r => r.id !== reservaId));
     setCancelando(null);
   }
