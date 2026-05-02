@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   collection, query, where, onSnapshot, doc,
-  updateDoc, deleteDoc, serverTimestamp
+  updateDoc, deleteDoc, serverTimestamp, addDoc, collection
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useData } from "../../context/DataContext";
@@ -59,6 +59,7 @@ export default function Dashboard() {
   const activos         = alumnos.filter(a => a.estado === "activo").length;
   const pagosPendientes = alumnos.filter(a => a.estado === "pago_pendiente").length;
   const proximosVencer  = alumnosProximosAVencer(alumnos, 7);
+  const yaVencidos      = alumnos.filter(a => a.cuotaVencida === true);
 
   const porHora = reservasHoy.reduce((acc, r) => {
     if (!acc[r.hora]) acc[r.hora] = [];
@@ -96,12 +97,53 @@ export default function Dashboard() {
 
       {proximosVencer.length > 0 && (
         <div style={{background:"#fef3c7", border:"1px solid #fcd34d", borderRadius:10, padding:"12px 16px", marginBottom:16}}>
-          <div style={{fontSize:13, fontWeight:500, color:"#92400e", marginBottom:6}}>
+          <div style={{fontSize:13, fontWeight:500, color:"#92400e", marginBottom:8}}>
             ⚠️ {proximosVencer.length} alumno{proximosVencer.length!==1?"s":""} vence{proximosVencer.length!==1?"n":""} esta semana
           </div>
           {proximosVencer.map(a => {
-            const v = new Date(a.fechaVencimiento.toDate?.() || a.fechaVencimiento);
-            return <div key={a.uid} style={{fontSize:12, color:"#92400e"}}>{a.nombre} {a.apellido} — vence {v.toLocaleDateString("es-AR")}</div>;
+            const v    = new Date(a.fechaVencimiento.toDate?.() || a.fechaVencimiento);
+            const hoy  = new Date(); hoy.setHours(0,0,0,0);
+            const dias = Math.ceil((v - hoy) / (1000*60*60*24));
+            const whatsapp = a.telefono ? `https://wa.me/54${a.telefono}?text=${encodeURIComponent(`Hola ${a.nombre}, te avisamos que tu plan vence el ${v.toLocaleDateString("es-AR")}. ¡Renovalo para seguir entrenando! 💪`)}` : null;
+            return (
+              <div key={a.uid} style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6, flexWrap:"wrap", gap:6}}>
+                <div>
+                  <span style={{fontSize:13, color:"#92400e", fontWeight:500}}>{a.nombre} {a.apellido}</span>
+                  <span style={{fontSize:12, color:"#b45309", marginLeft:8}}>
+                    vence {v.toLocaleDateString("es-AR")}
+                    {dias <= 0 ? " — HOY" : dias === 1 ? " — mañana" : ` — en ${dias} días`}
+                  </span>
+                </div>
+                {whatsapp && (
+                  <a href={whatsapp} target="_blank" rel="noreferrer"
+                    style={{fontSize:11, background:"#25D366", color:"#fff", padding:"3px 10px", borderRadius:20, textDecoration:"none", fontWeight:500, flexShrink:0}}>
+                    WhatsApp
+                  </a>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {yaVencidos.length > 0 && (
+        <div style={{background:"#fee2e2", border:"1px solid #fca5a5", borderRadius:10, padding:"12px 16px", marginBottom:16}}>
+          <div style={{fontSize:13, fontWeight:500, color:"#991b1b", marginBottom:8}}>
+            🚨 {yaVencidos.length} alumno{yaVencidos.length!==1?"s":""} con plan vencido
+          </div>
+          {yaVencidos.map(a => {
+            const whatsapp = a.telefono ? `https://wa.me/54${a.telefono}?text=${encodeURIComponent(`Hola ${a.nombre}, tu plan venció. ¡Renovalo para seguir entrenando en La Torre Gym! 💪`)}` : null;
+            return (
+              <div key={a.uid} style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4, flexWrap:"wrap", gap:6}}>
+                <span style={{fontSize:13, color:"#991b1b"}}>{a.nombre} {a.apellido}</span>
+                {whatsapp && (
+                  <a href={whatsapp} target="_blank" rel="noreferrer"
+                    style={{fontSize:11, background:"#25D366", color:"#fff", padding:"3px 10px", borderRadius:20, textDecoration:"none", fontWeight:500}}>
+                    WhatsApp
+                  </a>
+                )}
+              </div>
+            );
           })}
         </div>
       )}
@@ -190,7 +232,20 @@ function CancelarBtn({ reservaId }) {
   const [loading, setLoading] = useState(false);
   if (confirm) return (
     <div style={{display:"flex", gap:4}}>
-      <button onClick={async () => { setLoading(true); await deleteDoc(doc(db,"reservas",reservaId)); }} disabled={loading}
+      <button onClick={async () => {
+          setLoading(true);
+          // Leer la reserva antes de borrar para notificar
+          const r = reservas?.find?.(x => x.id === reservaId) || {};
+          await deleteDoc(doc(db,"reservas",reservaId));
+          if (r.alumnoId) {
+            await addDoc(collection(db,"notificaciones"), {
+              alumnoId: r.alumnoId,
+              tipo: r.esFijo ? "fijo_cancelado" : "turno_cancelado",
+              dia: r.dia, hora: r.hora, fecha: r.fecha,
+              leido: false, creadoEn: serverTimestamp(),
+            });
+          }
+        }} disabled={loading}
         style={{background:"#dc2626",color:"#fff",border:"none",borderRadius:6,padding:"4px 8px",fontSize:11,cursor:"pointer"}}>
         {loading?"...":"Sí"}
       </button>
