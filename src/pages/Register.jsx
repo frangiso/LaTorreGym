@@ -48,11 +48,13 @@ export default function Register() {
   async function handleRegister(e) {
     e.preventDefault();
     setError("");
-    if (!form.nombre.trim()) { setError("El nombre es obligatorio."); return; }
-    if (!form.apellido.trim()) { setError("El apellido es obligatorio."); return; }
-    if (!form.telefono.trim()) { setError("El teléfono es obligatorio."); return; }
-    if (form.password !== form.confirm) { setError("Las contraseñas no coinciden."); return; }
-    if (form.password.length < 6) { setError("La contraseña debe tener al menos 6 caracteres."); return; }
+    if (!form.nombre.trim())             { setError("El nombre es obligatorio."); return; }
+    if (!form.apellido.trim())            { setError("El apellido es obligatorio."); return; }
+    if (!form.telefono.trim())            { setError("El teléfono es obligatorio."); return; }
+    if (!form.nombreEmergencia.trim())    { setError("El nombre del contacto de emergencia es obligatorio."); return; }
+    if (!form.telefonoEmergencia.trim())  { setError("El teléfono del contacto de emergencia es obligatorio."); return; }
+    if (form.password !== form.confirm)   { setError("Las contraseñas no coinciden."); return; }
+    if (form.password.length < 6)        { setError("La contraseña debe tener al menos 6 caracteres."); return; }
     setLoading(true);
     try {
       const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
@@ -99,11 +101,11 @@ export default function Register() {
             <Field label="Apellido *" name="apellido" value={form.apellido} onChange={handleChange} placeholder="Pérez" />
           </div>
           <Field label="Email *"   name="email"    type="email" value={form.email}    onChange={handleChange} placeholder="tu@email.com" />
-          <Field label="Teléfono" name="telefono" type="tel"   value={form.telefono} onChange={handleChange} placeholder="2664XXXXXXX" />
+          <Field label="Teléfono *" name="telefono" type="tel"   value={form.telefono} onChange={handleChange} placeholder="2664XXXXXXX" />
 
           <p style={{ fontSize: 11, fontWeight: 500, color: "#444", textTransform: "uppercase", letterSpacing: "0.07em", margin: "8px 0 2px" }}>Contacto de emergencia</p>
-          <Field label="Nombre del contacto"    name="nombreEmergencia"    value={form.nombreEmergencia}    onChange={handleChange} placeholder="Ej: María Pérez (madre)" />
-          <Field label="Teléfono del contacto"  name="telefonoEmergencia"  type="tel" value={form.telefonoEmergencia}  onChange={handleChange} placeholder="2664XXXXXXX" />
+          <Field label="Nombre del contacto *"    name="nombreEmergencia"    value={form.nombreEmergencia}    onChange={handleChange} placeholder="Ej: María Pérez (madre)" />
+          <Field label="Teléfono del contacto *"  name="telefonoEmergencia"  type="tel" value={form.telefonoEmergencia}  onChange={handleChange} placeholder="2664XXXXXXX" />
 
           <p style={{ fontSize: 11, fontWeight: 500, color: "#444", textTransform: "uppercase", letterSpacing: "0.07em", margin: "8px 0 2px" }}>Acceso</p>
           <Field label="Contraseña *"         name="password" type="password" value={form.password} onChange={handleChange} placeholder="Mínimo 6 caracteres" />
