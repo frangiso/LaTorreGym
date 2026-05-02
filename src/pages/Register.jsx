@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { doc, setDoc, serverTimestamp, getDoc, collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { useNavigate, Link } from "react-router-dom";
 import LtLogo from "../components/LtLogo";
@@ -31,6 +31,7 @@ function Field({ label, name, type, placeholder, value, onChange }) {
 }
 
 export default function Register() {
+  const [emailLiberado, setEmailLiberado] = useState(false);
   const [form, setForm] = useState({
     nombre: "", apellido: "", email: "", telefono: "",
     telefonoEmergencia: "", nombreEmergencia: "",
@@ -57,6 +58,32 @@ export default function Register() {
     if (form.password.length < 6)        { setError("La contraseña debe tener al menos 6 caracteres."); return; }
     setLoading(true);
     try {
+      // Verificar si el email fue liberado (alumno dado de baja)
+      const emailKey = form.email.trim().toLowerCase().replace(/\./g, "_");
+      const liberadoRef = doc(db, "emailsLiberados", emailKey);
+      const liberadoSnap = await getDoc(liberadoRef);
+
+      if (liberadoSnap.exists()) {
+        // Email liberado — mandar reset de contraseña y crear nuevo perfil al iniciar sesión
+        await sendPasswordResetEmail(auth, form.email.trim());
+        // Guardar los datos del formulario temporalmente para cuando inicie sesión
+        await setDoc(doc(db, "emailsLiberados", emailKey), {
+          ...liberadoSnap.data(),
+          pendienteRegistro: {
+            nombre: form.nombre.trim(),
+            apellido: form.apellido.trim(),
+            telefono: form.telefono.trim(),
+            nombreEmergencia: form.nombreEmergencia.trim(),
+            telefonoEmergencia: form.telefonoEmergencia.trim(),
+          }
+        });
+        setLoading(false);
+        setError("");
+        // Mostrar mensaje especial
+        setEmailLiberado(true);
+        return;
+      }
+
       const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
       await setDoc(doc(db, "usuarios", cred.user.uid), {
         nombre: form.nombre,
@@ -81,6 +108,25 @@ export default function Register() {
       setLoading(false);
     }
   }
+
+  if (emailLiberado) return (
+    <div style={{ minHeight: "100vh", background: "#111", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ background: "#1a1a1a", borderRadius: 16, padding: 32, maxWidth: 400, width: "100%", textAlign: "center" }}>
+        <div style={{ fontSize: 40, marginBottom: 16 }}>📧</div>
+        <h2 style={{ color: "#F5C400", fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Revisá tu email</h2>
+        <p style={{ color: "#ccc", fontSize: 14, lineHeight: 1.6, marginBottom: 8 }}>
+          Tu email ya estaba registrado en el sistema. Te enviamos un link para que elijas una nueva contraseña.
+        </p>
+        <p style={{ color: "#888", fontSize: 13, lineHeight: 1.6, marginBottom: 24 }}>
+          Una vez que cambies la contraseña, iniciá sesión normalmente y tu cuenta quedará activa.
+        </p>
+        <a href="/login" style={{ background: "#F5C400", color: "#111", borderRadius: 10, padding: "12px 28px",
+          fontSize: 14, fontWeight: 600, textDecoration: "none", display: "inline-block" }}>
+          Ir al login
+        </a>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ minHeight: "100vh", background: "#111", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px" }}>

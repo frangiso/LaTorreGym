@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebase";
+import { auth, db } from "../firebase";
+import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { useNavigate, Link } from "react-router-dom";
 import LtLogo from "../components/LtLogo";
 
@@ -16,7 +17,34 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+
+      // Verificar si hay un registro pendiente (alumno dado de baja que se re-registró)
+      const emailKey = email.trim().toLowerCase().replace(/\./g, "_");
+      const liberadoRef = doc(db, "emailsLiberados", emailKey);
+      const liberadoSnap = await getDoc(liberadoRef);
+
+      if (liberadoSnap.exists() && liberadoSnap.data().pendienteRegistro) {
+        const datos = liberadoSnap.data().pendienteRegistro;
+        // Verificar que no tenga ya un perfil en Firestore
+        const perfilSnap = await getDoc(doc(db, "usuarios", cred.user.uid));
+        if (!perfilSnap.exists()) {
+          // Crear perfil nuevo con los datos guardados
+          await setDoc(doc(db, "usuarios", cred.user.uid), {
+            nombre:              datos.nombre,
+            apellido:            datos.apellido,
+            email:               email.trim().toLowerCase(),
+            telefono:            datos.telefono,
+            nombreEmergencia:    datos.nombreEmergencia,
+            telefonoEmergencia:  datos.telefonoEmergencia,
+            rol:                 "alumno",
+            estado:              "pendiente",
+            creadoEn:            serverTimestamp(),
+          });
+        }
+        // Borrar el registro de emailsLiberados
+        await deleteDoc(liberadoRef);
+      }
       navigate("/");
     } catch {
       setError("Email o contraseña incorrectos.");
