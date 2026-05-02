@@ -42,10 +42,11 @@ export default function Dashboard() {
     return fn;
   }, [fecha]);
 
-  // Lista de espera
+  // Lista de espera — solo notificados (filtrado en Firestore)
   useEffect(() => {
-    const fn = onSnapshot(collection(db, "listaEspera"), snap => {
-      setListaEspera(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(e => e.notificado === true));
+    const q = query(collection(db, "listaEspera"), where("notificado", "==", true));
+    const fn = onSnapshot(q, snap => {
+      setListaEspera(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
     return fn;
   }, []);
