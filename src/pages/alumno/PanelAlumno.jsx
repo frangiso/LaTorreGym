@@ -265,7 +265,7 @@ export default function PanelAlumno() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f7f7f7" }}>
-      <LtHeader rol="alumno" onLogout={() => signOut(auth).then(() => navigate("/login"))} />
+      <LtHeader rol="alumno" onLogout={async () => { await signOut(auth); navigate("/login", { replace: true }); }} />
 
       <div style={{ maxWidth: 600, margin: "0 auto", padding: "16px 12px 80px" }}>
 
