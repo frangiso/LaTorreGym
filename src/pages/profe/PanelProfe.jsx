@@ -167,7 +167,7 @@ export default function PanelProfe() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f7f7f7", paddingBottom: 72 }}>
-      <LtHeader onLogout={() => signOut(auth).then(() => navigate("/login"))} />
+      <LtHeader onLogout={async () => { await signOut(auth); navigate("/login", { replace: true }); }} />
 
       {/* Titulo de seccion */}
       <div style={{ background: "#fff", borderBottom: "0.5px solid #e0e0e0", padding: "10px 16px" }}>
