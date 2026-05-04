@@ -59,29 +59,32 @@ export default function Register() {
     setLoading(true);
     try {
       // Verificar si el email fue liberado (alumno dado de baja)
-      const emailKey = form.email.trim().toLowerCase().replace(/\./g, "_");
-      const liberadoRef = doc(db, "emailsLiberados", emailKey);
-      const liberadoSnap = await getDoc(liberadoRef);
-
-      if (liberadoSnap.exists()) {
-        // Email liberado — mandar reset de contraseña y crear nuevo perfil al iniciar sesión
-        await sendPasswordResetEmail(auth, form.email.trim());
-        // Guardar los datos del formulario temporalmente para cuando inicie sesión
-        await setDoc(doc(db, "emailsLiberados", emailKey), {
-          ...liberadoSnap.data(),
-          pendienteRegistro: {
-            nombre: form.nombre.trim(),
-            apellido: form.apellido.trim(),
-            telefono: form.telefono.trim(),
-            nombreEmergencia: form.nombreEmergencia.trim(),
-            telefonoEmergencia: form.telefonoEmergencia.trim(),
-          }
-        });
-        setLoading(false);
-        setError("");
-        // Mostrar mensaje especial
-        setEmailLiberado(true);
-        return;
+      // Si falla por permisos (usuario no logueado), continuar con registro normal
+      let esEmailLiberado = false;
+      try {
+        const emailKey = form.email.trim().toLowerCase().replace(/\./g, "_");
+        const liberadoRef = doc(db, "emailsLiberados", emailKey);
+        const liberadoSnap = await getDoc(liberadoRef);
+        if (liberadoSnap.exists()) {
+          esEmailLiberado = true;
+          await sendPasswordResetEmail(auth, form.email.trim());
+          await setDoc(liberadoRef, {
+            ...liberadoSnap.data(),
+            pendienteRegistro: {
+              nombre: form.nombre.trim(),
+              apellido: form.apellido.trim(),
+              telefono: form.telefono.trim(),
+              nombreEmergencia: form.nombreEmergencia.trim(),
+              telefonoEmergencia: form.telefonoEmergencia.trim(),
+            }
+          });
+          setLoading(false);
+          setEmailLiberado(true);
+          return;
+        }
+      } catch(e) {
+        // Sin permisos para leer emailsLiberados (usuario no logueado) — continuar normal
+        console.log("emailsLiberados no accesible, registrando normalmente");
       }
 
       const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
