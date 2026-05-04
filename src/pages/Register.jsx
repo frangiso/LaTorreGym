@@ -101,9 +101,10 @@ export default function Register() {
       });
       navigate("/instructivo");
     } catch (err) {
+      console.error("Register error:", err.code, err.message);
       if (err.code === "auth/email-already-in-use") setError("Ese email ya está registrado.");
       else if (err.code === "auth/invalid-email") setError("Email inválido.");
-      else setError("Error al registrarse. Intentá de nuevo.");
+      else setError("Error: " + (err.code || err.message || "desconocido"));
     } finally {
       setLoading(false);
     }
