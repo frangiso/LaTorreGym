@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { auth, db } from "../firebase";
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { useNavigate, Link } from "react-router-dom";
@@ -7,10 +7,26 @@ import LtLogo from "../components/LtLogo";
 
 export default function Login() {
   const [email, setEmail]       = useState("");
+  const [resetEnviado, setResetEnviado] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState(false);
   const navigate = useNavigate();
+
+  async function handleReset() {
+    if (!email.trim()) { setError("Ingresá tu email para recuperar la contraseña."); return; }
+    setResetLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setResetEnviado(true);
+      setError("");
+    } catch(err) {
+      if (err.code === "auth/user-not-found") setError("No hay cuenta registrada con ese email.");
+      else setError("Error al enviar el email. Intentá de nuevo.");
+    }
+    setResetLoading(false);
+  }
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -130,6 +146,17 @@ export default function Login() {
         </form>
 
         <p style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "#555" }}>
+          {resetEnviado ? (
+            <div style={{ color: "#10b981", fontSize: 13, textAlign: "center", marginBottom: 8 }}>
+              ✓ Te enviamos un email para recuperar tu contraseña. Revisá tu bandeja de entrada.
+            </div>
+          ) : (
+            <button type="button" onClick={handleReset} disabled={resetLoading}
+              style={{ background: "transparent", border: "none", color: "#aaa", fontSize: 13,
+                cursor: "pointer", textDecoration: "underline", marginBottom: 8, display: "block", width: "100%" }}>
+              {resetLoading ? "Enviando..." : "¿Olvidaste tu contraseña?"}
+            </button>
+          )}
           ¿No tenés cuenta?{" "}
           <Link to="/register" style={{ color: "#F5C400", textDecoration: "none", fontWeight: 500 }}>
             Registrate
