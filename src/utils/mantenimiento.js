@@ -67,7 +67,8 @@ export async function correrMantenimiento() {
 
     // 3. Marcar cuota vencida si paso la fecha de vencimiento
     if (a.fechaVencimiento) {
-      const vence = new Date(a.fechaVencimiento.toDate?.() || a.fechaVencimiento);
+      const vRaw = new Date(a.fechaVencimiento.toDate?.() || a.fechaVencimiento);
+      const vence = new Date(vRaw.getFullYear(), vRaw.getMonth(), vRaw.getDate());
       if (vence < hoy && a.estado === "activo") {
         updates.estado = "pago_pendiente";
         updates.planId = null;
@@ -109,7 +110,8 @@ export function alumnosProximosAVencer(alumnos, dias = 7) {
 
   return alumnos.filter(a => {
     if (!a.fechaVencimiento || a.estado !== "activo") return false;
-    const vence = new Date(a.fechaVencimiento.toDate?.() || a.fechaVencimiento);
+    const vRaw2 = new Date(a.fechaVencimiento.toDate?.() || a.fechaVencimiento);
+    const vence = new Date(vRaw2.getFullYear(), vRaw2.getMonth(), vRaw2.getDate());
     return vence >= hoy && vence <= limite;
   });
 }
