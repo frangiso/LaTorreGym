@@ -72,12 +72,17 @@ export default function PanelAlumno() {
   const necesitaFijos    = !esSuelta && planId && !tienesFijos && perfil?.turnosFijosEstado !== "pendiente";
   const pendienteFijos   = perfil?.turnosFijosEstado === "pendiente";
 
-  const fechaVence = perfil?.fechaVencimiento
+  const fechaVenceRaw = perfil?.fechaVencimiento
     ? new Date(perfil.fechaVencimiento.toDate?.() || perfil.fechaVencimiento)
     : null;
+  // Normalizar a fecha local sin hora para evitar desfase UTC
+  const fechaVence = fechaVenceRaw
+    ? new Date(fechaVenceRaw.getFullYear(), fechaVenceRaw.getMonth(), fechaVenceRaw.getDate())
+    : null;
   const vence = fechaVence ? fechaVence.toLocaleDateString("es-AR") : null;
+  const hoyMidnight = new Date(); hoyMidnight.setHours(0,0,0,0);
   const diasRestantes = fechaVence
-    ? Math.ceil((fechaVence - new Date()) / (1000*60*60*24))
+    ? Math.round((fechaVence - hoyMidnight) / (1000*60*60*24))
     : null;
   const colorVence = diasRestantes === null ? "#aaa"
     : diasRestantes <= 0  ? "#dc2626"
