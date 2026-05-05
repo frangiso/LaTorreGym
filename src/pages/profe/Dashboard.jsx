@@ -101,9 +101,11 @@ export default function Dashboard() {
             ⚠️ {proximosVencer.length} alumno{proximosVencer.length!==1?"s":""} vence{proximosVencer.length!==1?"n":""} esta semana
           </div>
           {proximosVencer.map(a => {
-            const v    = new Date(a.fechaVencimiento.toDate?.() || a.fechaVencimiento);
+            const vRaw = new Date(a.fechaVencimiento.toDate?.() || a.fechaVencimiento);
+            // Normalizar a fecha local sin hora para evitar desfase UTC
+            const v    = new Date(vRaw.getFullYear(), vRaw.getMonth(), vRaw.getDate());
             const hoy  = new Date(); hoy.setHours(0,0,0,0);
-            const dias = Math.ceil((v - hoy) / (1000*60*60*24));
+            const dias = Math.round((v - hoy) / (1000*60*60*24));
             const whatsapp = a.telefono ? `https://wa.me/54${a.telefono}?text=${encodeURIComponent(`Hola ${a.nombre}, te avisamos que tu plan vence el ${v.toLocaleDateString("es-AR")}. ¡Renovalo para seguir entrenando! 💪`)}` : null;
             return (
               <div key={a.uid} style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6, flexWrap:"wrap", gap:6}}>
