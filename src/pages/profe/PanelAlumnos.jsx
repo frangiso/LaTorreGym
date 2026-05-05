@@ -122,8 +122,8 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
   async function guardar() {
     setGuardando(true);
     const plan = planes.find(p => p.id === form.planId);
-    const vence = new Date();
-    vence.setMonth(vence.getMonth() + 1);
+    const _h = new Date();
+    const vence = new Date(_h.getFullYear(), _h.getMonth() + 1, _h.getDate());
 
     const updates = {
       nombre:             form.nombre,
