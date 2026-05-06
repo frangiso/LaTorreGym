@@ -82,7 +82,7 @@ export async function correrMantenimiento() {
           const { addDoc, collection, serverTimestamp } = await import("firebase/firestore");
           const { db } = await import("../firebase");
           await addDoc(collection(db, "notificaciones"), {
-            alumnoId: alumno.uid,
+            alumnoId: a.uid,
             tipo:     "plan_vencido",
             leido:    false,
             creadoEn: serverTimestamp(),
