@@ -45,6 +45,7 @@ export default function PagosPendientes() {
   // Usamos fechaActivacion como referencia del mes en que se cobró
   const pagosDelMes = todosAlumnos.filter(a => {
     if (!a.fechaActivacion || !a.montoPagado) return false;
+    if (a.estado !== "activo") return false; // solo alumnos con pago confirmado
     const fecha = new Date(a.fechaActivacion.toDate?.() || a.fechaActivacion);
     return fecha.getMonth() === mesVer && fecha.getFullYear() === anioVer;
   });

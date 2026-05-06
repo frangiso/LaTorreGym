@@ -106,7 +106,8 @@ export default function Dashboard() {
             const v    = new Date(vRaw.getFullYear(), vRaw.getMonth(), vRaw.getDate());
             const hoy  = new Date(); hoy.setHours(0,0,0,0);
             const dias = Math.round((v - hoy) / (1000*60*60*24));
-            const whatsapp = a.telefono ? `https://wa.me/54${a.telefono}?text=${encodeURIComponent(`Hola ${a.nombre}, te avisamos que tu plan vence el ${v.toLocaleDateString("es-AR")}. ¡Renovalo para seguir entrenando! 💪`)}` : null;
+            const telLimpio = (a.telefono || "").replace(/^0/, "").replace(/\s/g, "");
+            const whatsapp = telLimpio ? `https://wa.me/54${telLimpio}?text=${encodeURIComponent(`Hola ${a.nombre}, te avisamos que tu plan vence el ${v.toLocaleDateString("es-AR")}. ¡Renovalo para seguir entrenando! 💪`)}` : null;
             return (
               <div key={a.uid} style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6, flexWrap:"wrap", gap:6}}>
                 <div>
@@ -134,7 +135,8 @@ export default function Dashboard() {
             🚨 {yaVencidos.length} alumno{yaVencidos.length!==1?"s":""} con plan vencido
           </div>
           {yaVencidos.map(a => {
-            const whatsapp = a.telefono ? `https://wa.me/54${a.telefono}?text=${encodeURIComponent(`Hola ${a.nombre}, tu plan venció. ¡Renovalo para seguir entrenando en La Torre Gym! 💪`)}` : null;
+            const telLimpio2 = (a.telefono || "").replace(/^0/, "").replace(/\s/g, "");
+                const whatsapp = telLimpio2 ? `https://wa.me/54${telLimpio2}?text=${encodeURIComponent(`Hola ${a.nombre}, tu plan venció. ¡Renovalo para seguir entrenando en La Torre Gym! 💪`)}` : null;
             return (
               <div key={a.uid} style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4, flexWrap:"wrap", gap:6}}>
                 <span style={{fontSize:13, color:"#991b1b"}}>{a.nombre} {a.apellido}</span>

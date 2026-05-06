@@ -101,7 +101,12 @@ export default function Avisos() {
 
       {avisos.length === 0 ? (
         <div style={{ background: "#fff", border: "0.5px solid #e0e0e0", borderRadius: 12, padding: "32px", textAlign: "center", color: "#aaa" }}>
-          <p style={{ fontSize: 13 }}>No hay avisos publicados.</p>
+          <div style={{ fontSize: 24, marginBottom: 8 }}>📢</div>
+          <p style={{ fontSize: 14, fontWeight: 500, color: "#555", marginBottom: 6 }}>No hay avisos publicados</p>
+          <p style={{ fontSize: 13, color: "#aaa", lineHeight: 1.6 }}>
+            Usá el formulario de abajo para crear un aviso.<br/>
+            Los avisos activos les aparecen a todos los alumnos cuando abren la app.
+          </p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
