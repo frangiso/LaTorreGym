@@ -16,7 +16,7 @@ import SolicitarTurnosFijos from "./SolicitarTurnosFijos";
 
 const DIAS = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
 const DIAS_CORTO = { LUNES:"Lun", MARTES:"Mar", MIERCOLES:"Mie", JUEVES:"Jue", VIERNES:"Vie", SABADO:"Sab" };
-const DIAS_FULL  = { LUNES:"Lunes", MARTES:"Martes", MIERCOLES:"Miercoles", JUEVES:"Jueves", VIERNES:"Viernes", SABADO:"Sabado" };
+const DIAS_FULL  = { LUNES:"Lunes", MARTES:"Martes", MIERCOLES:"Miércoles", JUEVES:"Jueves", VIERNES:"Viernes", SABADO:"Sábado" };
 
 function getInicioSemana(offset = 0) {
   const hoy = new Date();
@@ -165,7 +165,7 @@ export default function PanelAlumno() {
     const key     = dia + "_" + hora.replace(":", "") + "_" + fecha;
     const tengo   = !!misReservas[key]?.id;
     const ocupados = reservasPorSlot[key] || 0;
-    const lleno   = ocupados >= 15 && !tengo;
+    const lleno   = ocupados >= cupoMax && !tengo;
     const pasado  = new Date(fecha + "T" + hora) < new Date();
     const feriad  = !!feriados[fecha];
 
@@ -457,7 +457,7 @@ export default function PanelAlumno() {
                 {horasDia.map(hora => {
                   const key      = diaSeleccionado + "_" + hora.replace(":", "") + "_" + fechaDia;
                   const ocupados = reservasPorSlot[key] || 0;
-                  const cupo     = 15;
+                  const cupo     = cupoMax;
                   const tengo    = !!misReservas[key]?.id;
                   const { accion, motivo } = estadoSlot(diaSeleccionado, hora, fechaDia, fechas);
                   const esFijo   = esMiFijo(diaSeleccionado, hora);
@@ -580,7 +580,7 @@ export default function PanelAlumno() {
 // ---- Modal para elegir recuperación por feriado ----
 function ModalRecuperacionFeriado({ turnoFijo, perfil, user, feriados, onCerrar }) {
   const DIAS       = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
-  const DIAS_FULL  = { LUNES:"Lunes", MARTES:"Martes", MIERCOLES:"Miercoles", JUEVES:"Jueves", VIERNES:"Viernes", SABADO:"Sabado" };
+  const DIAS_FULL  = { LUNES:"Lunes", MARTES:"Martes", MIERCOLES:"Miércoles", JUEVES:"Jueves", VIERNES:"Viernes", SABADO:"Sábado" };
   const DIAS_CORTO = { LUNES:"Lun", MARTES:"Mar", MIERCOLES:"Mie", JUEVES:"Jue", VIERNES:"Vie", SABADO:"Sab" };
 
   const [diaActivo, setDiaActivo]   = useState("LUNES");
@@ -631,7 +631,7 @@ function ModalRecuperacionFeriado({ turnoFijo, perfil, user, feriados, onCerrar 
     const fecha = fechas[dia];
     const key   = dia+"_"+hora.replace(":","")+"_"+fecha;
     if(misReservas[key]?.id) return;
-    if((reservasPorSlot[key]||0)>=15) return;
+    if((reservasPorSlot[key]||0)>=cupoMax) return;
     setProcesando(key);
     try {
       await addDoc(collection(db,"reservas"),{
@@ -730,7 +730,8 @@ function ModalRecuperacionFeriado({ turnoFijo, perfil, user, feriados, onCerrar 
             const key     = diaActivo+"_"+hora.replace(":","")+"_"+fecha;
             const ocupados= reservasPorSlot[key]||0;
             const tengo   = !!misReservas[key]?.id;
-            const lleno   = ocupados>=15&&!tengo;
+            const cupoLocal = 15; // valor por defecto en modales internos
+    const lleno   = ocupados>=cupoLocal&&!tengo;
             const pasado  = new Date(fecha+"T"+hora)<new Date();
             const block   = lleno||pasado;
             const isProc  = procesando===key;
@@ -776,7 +777,7 @@ function ModalRecuperacionFeriado({ turnoFijo, perfil, user, feriados, onCerrar 
 // ---- Modal de Notificación del Profe ----
 function ModalNotificacion({ notificacion, perfil, user, feriados, onCerrar }) {
   const DIAS = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
-  const DIAS_FULL = { LUNES:"Lunes", MARTES:"Martes", MIERCOLES:"Miercoles", JUEVES:"Jueves", VIERNES:"Viernes", SABADO:"Sabado" };
+  const DIAS_FULL = { LUNES:"Lunes", MARTES:"Martes", MIERCOLES:"Miércoles", JUEVES:"Jueves", VIERNES:"Viernes", SABADO:"Sábado" };
   const DIAS_CORTO = { LUNES:"Lun", MARTES:"Mar", MIERCOLES:"Mie", JUEVES:"Jue", VIERNES:"Vie", SABADO:"Sab" };
 
   const [semanaOffset, setSemana]   = useState(0);
@@ -827,7 +828,7 @@ function ModalNotificacion({ notificacion, perfil, user, feriados, onCerrar }) {
   async function reservarExcepcion(dia, hora) {
     const fecha = fechas[dia];
     const key = dia+"_"+hora.replace(":","")+"_"+fecha;
-    if(misReservas[key] || (reservasPorSlot[key]||0)>=15) return;
+    if(misReservas[key] || (reservasPorSlot[key]||0)>=15) return; // cupo en modal
     setProcesando(key);
     try {
       await addDoc(collection(db,"reservas"),{
@@ -955,7 +956,7 @@ function ModalNotificacion({ notificacion, perfil, user, feriados, onCerrar }) {
                 const key = diaActivo+"_"+hora.replace(":","")+"_"+fecha;
                 const ocupados = reservasPorSlot[key]||0;
                 const tengo = !!misReservas[key];
-                const lleno = ocupados>=15&&!tengo;
+                const lleno = ocupados>=15&&!tengo; // cupo en modal notif
                 const pasado = new Date(fecha+"T"+hora)<new Date();
                 const block = lleno||pasado;
                 const isProc = procesando===key;

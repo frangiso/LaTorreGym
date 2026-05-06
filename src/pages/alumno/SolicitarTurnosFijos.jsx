@@ -6,11 +6,10 @@ import {
 import { db } from "../../firebase";
 
 const DIAS      = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
-const DIAS_FULL = { LUNES:"Lunes", MARTES:"Martes", MIERCOLES:"Miercoles",
-                    JUEVES:"Jueves", VIERNES:"Viernes", SABADO:"Sabado" };
+const DIAS_FULL = { LUNES:"Lunes", MARTES:"Martes", MIERCOLES:"Miércoles",
+                    JUEVES:"Jueves", VIERNES:"Viernes", SABADO:"Sábado" };
 const DIAS_CORTO= { LUNES:"Lun", MARTES:"Mar", MIERCOLES:"Mie",
                     JUEVES:"Jue", VIERNES:"Vie", SABADO:"Sab" };
-const CUPO = 15;
 const TURNOS_POR_PLAN = { "2dias":2, "3dias":3, "lv":6, "suelta":0 };
 
 // ---- Helpers (fuera del componente) ----
