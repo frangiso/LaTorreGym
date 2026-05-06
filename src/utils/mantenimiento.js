@@ -70,7 +70,7 @@ export async function correrMantenimiento() {
       const vRaw = new Date(a.fechaVencimiento.toDate?.() || a.fechaVencimiento);
       const vence = new Date(vRaw.getFullYear(), vRaw.getMonth(), vRaw.getDate());
       if (vence < hoy && a.estado === "activo") {
-        updates.estado = "pago_pendiente";
+        updates.estado = "inactivo";
         updates.planId = null;
         updates.planNombre = null;
         updates.cuotaVencida = true;
