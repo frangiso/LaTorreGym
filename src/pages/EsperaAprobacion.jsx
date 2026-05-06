@@ -16,7 +16,8 @@ export default function EsperaAprobacion() {
   const [enviando, setEnviando] = useState(false);
   const [paso, setPaso] = useState("espera"); // "espera" | "elegirPlan"
 
-  const planAgotado = perfil?.estado === "pago_pendiente" && !perfil?.planId;
+  const planVencido  = perfil?.estado === "inactivo";  // plan vencido, debe renovar
+  const esperandoProfe = perfil?.estado === "pago_pendiente"; // ya eligió plan, espera al profe
 
   useEffect(() => {
     if (perfil?.estado === "activo") navigate("/alumno");
@@ -69,11 +70,11 @@ export default function EsperaAprobacion() {
               </svg>
             </div>
 
-            {planAgotado ? (
+            {planVencido ? (
               <>
-                <h1 style={{ fontSize: 20, fontWeight: 500, color: "#111", margin: "0 0 8px" }}>Plan agotado</h1>
+                <h1 style={{ fontSize: 20, fontWeight: 500, color: "#111", margin: "0 0 8px" }}>Tu plan venció</h1>
                 <p style={{ fontSize: 14, color: "#666", lineHeight: 1.6, margin: "0 0 24px" }}>
-                  Consumiste todas las clases de tu plan. Para seguir entrenando, renova eligiendo un nuevo plan.
+                  Para seguir entrenando, elegí un nuevo plan y método de pago.
                 </p>
                 <button onClick={() => setPaso("elegirPlan")}
                   style={{ background: "#F5C400", color: "#111", border: "none", borderRadius: 10, padding: "13px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", marginBottom: 16 }}>
