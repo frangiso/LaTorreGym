@@ -93,6 +93,8 @@ async function borrarReservas(uid) {
 export default function SolicitarTurnosFijos({ perfil, user }) {
   const [diaActivo, setDia]       = useState("LUNES");
   const [seleccionados, setSel]   = useState([]);
+  const { config } = useData();
+  const CUPO = config?.cupoMaximo ?? 15;
   const [ocupacion, setOcupacion] = useState({});
   const [guardando, setGuardando] = useState(false);
   const [ok, setOk]               = useState(false);
