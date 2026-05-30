@@ -30,6 +30,7 @@ export default function PagosPendientes() {
   const [anioVer, setAnioVer]           = useState(new Date().getFullYear());
   const [descuentoModal, setDescuentoModal] = useState(null); // alumno con modal abierto
   const [motivoDescuento, setMotivoDescuento] = useState("");
+  const [familiarModal, setFamiliarModal] = useState(null); // modal 15% familiar
 
   async function confirmar(alumno, descuentoExtra = 0, motivo = "") {
     setProcesando(alumno.uid);
@@ -39,6 +40,7 @@ export default function PagosPendientes() {
     // Calcular monto con descuentos
     let monto = alumno.montoPagado || 0;
     if (alumno.descuentoFutbol) monto = Math.round(monto * 0.85); // -15%
+    if (descuentoExtra === 15)  monto = Math.round(monto * 0.85); // -15% familiar
     if (descuentoExtra === 50)  monto = Math.round(monto * 0.5);  // -50%
     
     // Agregar inscripción si es primera vez
@@ -52,6 +54,7 @@ export default function PagosPendientes() {
       montoPagado:      montoFinal,
       inscripcionPagada: true,
       ...(alumno.descuentoFutbol ? { descuentoAplicado: "15% familiar fútbol" } : {}),
+      ...(descuentoExtra === 15   ? { descuentoAplicado: "15% familiar La Torre" } : {}),
       ...(descuentoExtra === 50   ? { descuentoEspecial: motivo }              : {}),
     });
 
@@ -59,10 +62,10 @@ export default function PagosPendientes() {
     await registrarActividad(db, addDoc, collection, serverTimestamp,
       miPerfil?.uid || "", miNombre.trim(),
       "pago_confirmado",
-      `Pago confirmado: ${alumno.nombre} ${alumno.apellido} — $${montoFinal.toLocaleString("es-AR")}${alumno.descuentoFutbol ? " (15% fútbol)" : ""}${descuentoExtra === 50 ? " (50% especial: "+motivo+")" : ""}${!alumno.inscripcionPagada ? " + inscripción $15.000" : ""}`
+      `Pago confirmado: ${alumno.nombre} ${alumno.apellido} — $${montoFinal.toLocaleString("es-AR")}${alumno.descuentoFutbol ? " (15% fútbol)" : ""}${descuentoExtra === 15 ? " (15% familiar)" : ""}${descuentoExtra === 50 ? " (50% especial: "+motivo+")" : ""}${!alumno.inscripcionPagada ? " + inscripción $15.000" : ""}`
     );
 
-    setDescuentoModal(null); setMotivoDescuento(""); setProcesando(null);
+    setDescuentoModal(null); setMotivoDescuento(""); setFamiliarModal(null); setProcesando(null);
   }
 
   async function rechazar(alumno) {
@@ -109,6 +112,35 @@ export default function PagosPendientes() {
 
   return (
     <div>
+      {/* ====== MODAL DESCUENTO 15% FAMILIAR ====== */}
+      {familiarModal && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div style={{background:"#fff",borderRadius:16,padding:24,maxWidth:400,width:"100%"}}>
+            <h3 style={{fontSize:16,fontWeight:500,marginBottom:8}}>🏅 15% descuento familiar</h3>
+            <p style={{fontSize:13,color:"#888",marginBottom:16,lineHeight:1.5}}>
+              Aplicar 15% de descuento para papá/mamá de alumno de La Torre. El nuevo monto se calculará automáticamente.
+            </p>
+            <div style={{background:"#fffbea",border:"1px solid #fcd34d",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:13,color:"#92400e"}}>
+              Monto original: <strong>${(familiarModal.montoPagado||0).toLocaleString("es-AR")}</strong>
+              {" → "}
+              Con descuento: <strong>${Math.round((familiarModal.montoPagado||0)*0.85).toLocaleString("es-AR")}</strong>
+              {!familiarModal.inscripcionPagada && <div style={{marginTop:4}}>+ Inscripción: $15.000</div>}
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={() => confirmar(familiarModal, 15, "")}
+                disabled={procesando === familiarModal?.uid}
+                style={{flex:1,background:"#F5C400",color:"#111",border:"none",borderRadius:8,padding:"10px",fontSize:13,fontWeight:500,cursor:"pointer"}}>
+                Confirmar con 15% off
+              </button>
+              <button onClick={() => setFamiliarModal(null)}
+                style={{background:"transparent",border:"0.5px solid #e0e0e0",borderRadius:8,padding:"10px 16px",fontSize:13,cursor:"pointer",color:"#888"}}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ====== MODAL DESCUENTO 50% ====== */}
       {descuentoModal && (
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
@@ -285,6 +317,10 @@ export default function PagosPendientes() {
                     <button onClick={() => confirmar(alumno)} disabled={procesando===alumno.uid}
                       style={{background:"#F5C400",color:"#111",border:"none",borderRadius:8,padding:"9px 18px",fontSize:13,fontWeight:500,cursor:"pointer"}}>
                       {procesando===alumno.uid?"Procesando...":"✓ Confirmar pago"}
+                    </button>
+                    <button onClick={() => setFamiliarModal(alumno)}
+                      style={{background:"#fffbea",border:"0.5px solid #fcd34d",color:"#92400e",borderRadius:8,padding:"9px 14px",fontSize:13,cursor:"pointer",fontWeight:500}}>
+                      🏅 15% familiar
                     </button>
                     <button onClick={() => setDescuentoModal(alumno)}
                       style={{background:"#fff5f5",border:"0.5px solid #fca5a5",color:"#dc2626",borderRadius:8,padding:"9px 14px",fontSize:13,cursor:"pointer",fontWeight:500}}>

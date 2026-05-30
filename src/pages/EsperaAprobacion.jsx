@@ -153,6 +153,16 @@ export default function EsperaAprobacion() {
               </div>
             )}
 
+            {/* Aviso pago presencial OBLIGATORIO */}
+            <div style={{ background: "#fff3cd", border: "2px solid #F5C400", borderRadius: 12, padding: "14px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <span style={{ fontSize: 20, flexShrink: 0 }}>⚠️</span>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#7a5c00", marginBottom: 4 }}>El pago es obligatoriamente presencial</div>
+                <div style={{ fontSize: 13, color: "#92400e", lineHeight: 1.6 }}>
+                  Tanto la transferencia como el efectivo se abonan <strong>en persona en La Torre Gym</strong>. Pasá por el gimnasio y el profe confirmará tu acceso.
+                </div>
+              </div>
+            </div>
 
             <button onClick={enviarRenovacion} disabled={!planSeleccionado || enviando}
               style={{ width: "100%", background: "#F5C400", color: "#111", border: "none", borderRadius: 10, padding: "13px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>

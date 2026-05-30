@@ -87,6 +87,25 @@ export default function InstructivoPlanes() {
           </div>
         )}
 
+        {/* Beneficios familiares */}
+        <div style={{ background: "#fffbea", border: "2px solid #F5C400", borderRadius: 12, padding: "16px 18px", marginBottom: 12 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#7a5c00", marginBottom: 10 }}>🏅 Beneficios para familias de alumnos de La Torre</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ background: "#fff", borderRadius: 10, padding: "12px 14px", border: "1px solid #fcd34d" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#92400e", marginBottom: 3 }}>15% de descuento en la cuota</div>
+              <div style={{ fontSize: 12, color: "#b45309", lineHeight: 1.5 }}>
+                Si sos papá o mamá de un alumno inscripto en La Torre, tenés un 15% de descuento permanente en tu cuota mensual. Avisale al profe al momento de registrar tu pago.
+              </div>
+            </div>
+            <div style={{ background: "#fff", borderRadius: 10, padding: "12px 14px", border: "1px solid #fcd34d" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#92400e", marginBottom: 3 }}>⚡ 2x1 este mes para la familia</div>
+              <div style={{ fontSize: 12, color: "#b45309", lineHeight: 1.5 }}>
+                Por este mes, si sos papá o mamá de un alumno de La Torre, pagás solo la mitad de la cuota. Preguntale al profe al momento de confirmar tu pago.
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Planes */}
         <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #e0e0e0", padding: "18px 20px", marginBottom: 20 }}>
           <h2 style={{ fontSize: 13, fontWeight: 500, color: "#888", textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 14px" }}>
