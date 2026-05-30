@@ -124,48 +124,53 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
 
   async function guardar() {
     setGuardando(true);
-    const plan = planes.find(p => p.id === form.planId);
-    const _h = new Date();
-    const vence = new Date(_h.getFullYear(), _h.getMonth() + 1, _h.getDate());
+    try {
+      const plan = planes.find(p => p.id === form.planId);
+      const _h = new Date();
+      const vence = new Date(_h.getFullYear(), _h.getMonth() + 1, _h.getDate());
 
-    const updates = {
-      nombre:             form.nombre,
-      apellido:           form.apellido,
-      telefono:           form.telefono,
-      telefonoEmergencia: form.telefonoEmergencia,
-      nombreEmergencia:   form.nombreEmergencia,
-      estado:             form.estado,
-      planId:             form.planId || null,
-      planNombre:         plan ? plan.nombre : null,
-      metodoPago:         form.metodoPago,
-      clasesUsadasMes:    Number(form.clasesUsadasMes),
-      recuperacionesUsadas: Number(form.recuperacionesUsadas ?? 0),
-      descuentoFutbol:    form.descuentoFutbol ?? false,
-      turnosFijos,
-      turnosFijosEstado: turnosFijos.length > 0 ? "aprobado" : null,
-    };
-
-    if (form.planId && form.planId !== a.planId) {
-      updates.montoPagado      = form.metodoPago === "transferencia" ? plan.precioTransferencia : plan.precioEfectivo;
-      updates.fechaActivacion  = new Date(); // renovación de plan = ingreso en caja
-      updates.fechaVencimiento = vence;
-      updates.estado           = "activo";
-    }
-
-    await updateDoc(doc(db, "usuarios", a.uid), updates);
-    // Si hay turnos fijos, generar reservas automaticamente
-    if (turnosFijos.length > 0) {
-      await generarReservasFijas({
-        uid: a.uid,
-        nombre: updates.nombre,
-        apellido: updates.apellido,
+      const updates = {
+        nombre:             form.nombre,
+        apellido:           form.apellido,
+        telefono:           form.telefono,
+        telefonoEmergencia: form.telefonoEmergencia,
+        nombreEmergencia:   form.nombreEmergencia,
+        estado:             form.estado,
+        planId:             form.planId || null,
+        planNombre:         plan ? plan.nombre : null,
+        metodoPago:         form.metodoPago,
+        clasesUsadasMes:    Number(form.clasesUsadasMes),
+        recuperacionesUsadas: Number(form.recuperacionesUsadas ?? 0),
+        descuentoFutbol:    form.descuentoFutbol ?? false,
         turnosFijos,
-        turnosFijosEstado: "aprobado",
-      }, 4);
+        turnosFijosEstado: turnosFijos.length > 0 ? "aprobado" : null,
+      };
+
+      if (form.planId && form.planId !== a.planId) {
+        updates.montoPagado      = form.metodoPago === "transferencia" ? plan.precioTransferencia : plan.precioEfectivo;
+        updates.fechaActivacion  = new Date();
+        updates.fechaVencimiento = vence;
+        updates.estado           = "activo";
+      }
+
+      await updateDoc(doc(db, "usuarios", a.uid), updates);
+      if (turnosFijos.length > 0) {
+        await generarReservasFijas({
+          uid: a.uid,
+          nombre: updates.nombre,
+          apellido: updates.apellido,
+          turnosFijos,
+          turnosFijosEstado: "aprobado",
+        }, 4);
+      }
+      setOk(true);
+      setTimeout(() => { setOk(false); onCerrar(); }, 1200);
+    } catch(e) {
+      console.error("Error guardando alumno:", e);
+      alert("Error al guardar. Intentá de nuevo.");
+    } finally {
+      setGuardando(false);
     }
-    setGuardando(false);
-    setOk(true);
-    setTimeout(() => { setOk(false); onCerrar(); }, 1200);
   }
 
   async function eliminarAlumno() {

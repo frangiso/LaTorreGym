@@ -30,17 +30,20 @@ export default function EsperaAprobacion() {
   async function enviarRenovacion() {
     if (!planSeleccionado || !user) return;
     setEnviando(true);
-    await updateDoc(doc(db, "usuarios", user.uid), {
-      estado: "pago_pendiente",
-      planId: planSeleccionado.id,
-      planNombre: planSeleccionado.nombre,
-      metodoPago: metodo,
-      montoPagado: metodo === "transferencia" ? planSeleccionado.precioTransferencia : planSeleccionado.precioEfectivo,
-      fechaSolicitud: serverTimestamp(),
-      clasesUsadasMes: 0,
-    });
-    setEnviando(false);
-    setPaso("espera");
+    try {
+      await updateDoc(doc(db, "usuarios", user.uid), {
+        estado: "pago_pendiente",
+        planId: planSeleccionado.id,
+        planNombre: planSeleccionado.nombre,
+        metodoPago: metodo,
+        montoPagado: metodo === "transferencia" ? planSeleccionado.precioTransferencia : planSeleccionado.precioEfectivo,
+        fechaSolicitud: serverTimestamp(),
+        clasesUsadasMes: 0,
+      });
+      setPaso("espera");
+    } finally {
+      setEnviando(false);
+    }
   }
 
 
