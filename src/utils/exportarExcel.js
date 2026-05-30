@@ -132,3 +132,40 @@ export async function exportarPlanillaDia(reservasHoy, fecha) {
   XLSX.utils.book_append_sheet(wb, ws, "Hoy");
   XLSX.writeFile(wb, "LaTorreGym_" + fecha + ".xlsx");
 }
+
+// Exporta planilla de la semana completa
+export async function exportarPlanillaSemanal(reservas, fechaRef) {
+  const XLSX = await cargarXLSX();
+
+  // Calcular semana actual (lunes a sábado)
+  const hoy = new Date(fechaRef || new Date());
+  const dow = hoy.getDay();
+  const lunes = new Date(hoy);
+  lunes.setDate(hoy.getDate() - (dow === 0 ? 6 : dow - 1));
+
+  const fechasSemana = Array.from({length:6}, (_,i) => {
+    const d = new Date(lunes);
+    d.setDate(lunes.getDate() + i);
+    return d.toISOString().split("T")[0];
+  });
+
+  const ordenadas = [...reservas]
+    .filter(r => fechasSemana.includes(r.fecha))
+    .sort((a,b) => a.fecha.localeCompare(b.fecha) || a.hora.localeCompare(b.hora));
+
+  const filas = ordenadas.map(r => ({
+    "Fecha":    r.fecha,
+    "Dia":      r.dia || "",
+    "Hora":     r.hora,
+    "Alumno":   r.nombreAlumno || "",
+    "Tipo":     r.esFijo ? "Turno fijo" : r.esRecuperacion ? "Recuperacion" : "Reserva",
+    "Asistio":  r.asistio === true ? "Presente" : r.asistio === false ? "Ausente" : "Sin marcar",
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(filas.length > 0 ? filas : [{ Nota: "Sin reservas esta semana" }]);
+  ws["!cols"] = [{ wch:12 },{ wch:12 },{ wch:8 },{ wch:28 },{ wch:16 },{ wch:12 }];
+  const wb = XLSX.utils.book_new();
+  const labelSemana = lunes.toLocaleDateString("es-AR") + " al " + new Date(lunes.getTime() + 5*86400000).toLocaleDateString("es-AR");
+  XLSX.utils.book_append_sheet(wb, ws, "Semana");
+  XLSX.writeFile(wb, "LaTorreGym_Semana_" + fechasSemana[0] + ".xlsx");
+}
