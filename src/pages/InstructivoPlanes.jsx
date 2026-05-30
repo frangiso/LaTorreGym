@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import LtLayout from "../components/LtLayout";
 import LtHeader from "../components/LtHeader";
+import LtLogo from "../components/LtLogo";
 
 export default function InstructivoPlanes() {
   const { perfil } = useAuth();
@@ -54,16 +55,11 @@ export default function InstructivoPlanes() {
           background: "#1a1a1a", borderRadius: 16, padding: "24px 20px",
           marginBottom: 24, textAlign: "center", border: "1px solid #2a2a2a"
         }}>
-          <div style={{ marginBottom: 8 }}>
-            <svg width="40" height="44" viewBox="0 0 40 44" fill="none">
-              <rect x="2" y="16" width="36" height="26" rx="5" fill="#F5C400" />
-              <path d="M14 16V10a6 6 0 0 1 12 0v6" stroke="#111" strokeWidth="3" strokeLinecap="round" />
-              <rect x="15" y="24" width="10" height="10" rx="2" fill="#111" />
-            </svg>
+          <div style={{ marginBottom: 12, display: "flex", justifyContent: "center" }}>
+            <LtLogo size="md" />
           </div>
           <h1 style={{ color: "#fff", fontSize: 22, fontWeight: 500, margin: "0 0 4px" }}>
-            Bienvenido a{" "}
-            <span style={{ color: "#F5C400" }}>{config.nombre}</span>
+            Bienvenido
           </h1>
           <p style={{ color: "#888", fontSize: 14, margin: 0 }}>
             Leé el reglamento, elegí tu plan y coordiná el pago para activar tu cuenta.
