@@ -165,7 +165,7 @@ export default function PanelAlumno() {
     const key     = dia + "_" + hora.replace(":", "") + "_" + fecha;
     const tengo   = !!misReservas[key]?.id;
     const ocupados = reservasPorSlot[key] || 0;
-    const lleno   = ocupados >= cupoMax && !tengo;
+    const lleno   = ocupados >= 15 && !tengo;
     const pasado  = new Date(fecha + "T" + hora) < new Date();
     const feriad  = !!feriados[fecha];
 
@@ -457,7 +457,7 @@ export default function PanelAlumno() {
                 {horasDia.map(hora => {
                   const key      = diaSeleccionado + "_" + hora.replace(":", "") + "_" + fechaDia;
                   const ocupados = reservasPorSlot[key] || 0;
-                  const cupo     = cupoMax;
+                  const cupo     = 15;
                   const tengo    = !!misReservas[key]?.id;
                   const { accion, motivo } = estadoSlot(diaSeleccionado, hora, fechaDia, fechas);
                   const esFijo   = esMiFijo(diaSeleccionado, hora);
@@ -631,7 +631,7 @@ function ModalRecuperacionFeriado({ turnoFijo, perfil, user, feriados, onCerrar 
     const fecha = fechas[dia];
     const key   = dia+"_"+hora.replace(":","")+"_"+fecha;
     if(misReservas[key]?.id) return;
-    if((reservasPorSlot[key]||0)>=cupoMax) return;
+    if((reservasPorSlot[key]||0)>=15) return;
     setProcesando(key);
     try {
       await addDoc(collection(db,"reservas"),{
