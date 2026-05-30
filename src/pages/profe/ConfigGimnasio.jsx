@@ -87,8 +87,8 @@ export default function ConfigGimnasio() {
       <Section title="Capacidad del gimnasio">
         <Field label="Cupo máximo por turno (personas)">
           <input style={inp} type="number" min="1" max="100"
-            value={config.cupoMaximo ?? 15}
-            onChange={e => setConfig(c => ({ ...c, cupoMaximo: Number(e.target.value) }))} />
+            value={config.15imo ?? 15}
+            onChange={e => setConfig(c => ({ ...c, 15imo: Number(e.target.value) }))} />
         </Field>
         <p style={{ fontSize: 12, color: "#aaa", margin: "4px 0 0" }}>
           Cantidad máxima de alumnos que pueden reservar el mismo horario.
