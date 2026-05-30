@@ -56,7 +56,8 @@ export default function PanelAlumno() {
   const [notificacion, setNotificacion]       = useState(null); // notif activa
   const [diaSeleccionado, setDiaSeleccionado] = useState(null);
   const [vistaAlumno, setVistaAlumno]         = useState("turnos");
-  const { avisos, feriados }                  = useData();
+  const { avisos, feriados, config }           = useData();
+  const cupoMax = config?.cupoMaximo ?? 15;
   const [enEspera, setEnEspera]               = useState({});
 
   const inicioSemana = getInicioSemana(semanaOffset);
@@ -165,7 +166,7 @@ export default function PanelAlumno() {
     const key     = dia + "_" + hora.replace(":", "") + "_" + fecha;
     const tengo   = !!misReservas[key]?.id;
     const ocupados = reservasPorSlot[key] || 0;
-    const lleno   = ocupados >= 15 && !tengo;
+    const lleno   = ocupados >= cupoMax && !tengo;
     const pasado  = new Date(fecha + "T" + hora) < new Date();
     const feriad  = !!feriados[fecha];
 
@@ -631,7 +632,7 @@ function ModalRecuperacionFeriado({ turnoFijo, perfil, user, feriados, onCerrar 
     const fecha = fechas[dia];
     const key   = dia+"_"+hora.replace(":","")+"_"+fecha;
     if(misReservas[key]?.id) return;
-    if((reservasPorSlot[key]||0)>=15) return;
+    if((reservasPorSlot[key]||0)>=cupoMax) return;
     setProcesando(key);
     try {
       await addDoc(collection(db,"reservas"),{
@@ -751,7 +752,7 @@ function ModalRecuperacionFeriado({ turnoFijo, perfil, user, feriados, onCerrar 
                 <div style={{display:"flex",alignItems:"center",gap:12}}>
                   <span style={{fontSize:17,fontWeight:500,color:block&&!tengo?"#ccc":"#111",minWidth:52}}>{hora}</span>
                   <div style={{display:"flex",gap:3,flexWrap:"wrap",maxWidth:110}}>
-                    {Array.from({length:15},(_,i)=>(
+                    {Array.from({length:cupoMax},(_,i)=>(
                       <span key={i} style={{width:7,height:7,borderRadius:"50%",flexShrink:0,
                         background:i<ocupados?(tengo?"#10b981":"#f59e0b"):"#e8e8e8"}}/>
                     ))}
@@ -970,7 +971,7 @@ function ModalNotificacion({ notificacion, perfil, user, feriados, onCerrar }) {
                     <div style={{display:"flex",alignItems:"center",gap:12}}>
                       <span style={{fontSize:17,fontWeight:500,color:block&&!tengo?"#ccc":"#111",minWidth:52}}>{hora}</span>
                       <div style={{display:"flex",gap:3,flexWrap:"wrap",maxWidth:110}}>
-                        {Array.from({length:15},(_,i)=>(
+                        {Array.from({length:cupoMax},(_,i)=>(
                           <span key={i} style={{width:7,height:7,borderRadius:"50%",flexShrink:0,
                             background:i<ocupados?(tengo?"#10b981":"#f59e0b"):"#e8e8e8"}}/>
                         ))}
