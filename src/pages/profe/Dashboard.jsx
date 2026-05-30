@@ -183,7 +183,22 @@ export default function Dashboard() {
           <p style={{fontSize:13, color:"#888", margin:0, textTransform:"capitalize"}}>{label}</p>
         </div>
         <div style={{display:"flex", gap:8}}>
-          <button onClick={() => { setExportando(true); exportarPlanillaSemanal(reservasSemana || reservasHoy, fecha).finally(() => setExportando(false)); }}
+          <button onClick={async () => {
+            setExportando(true);
+            try {
+              const { getDocs, collection, query, where } = await import("firebase/firestore");
+              const { db: _db } = await import("../../firebase");
+              const hoy2 = new Date();
+              const dow2 = hoy2.getDay();
+              const lun2 = new Date(hoy2);
+              lun2.setDate(hoy2.getDate() - (dow2===0?6:dow2-1));
+              const fechas2 = Array.from({length:6},(_,i)=>{const d=new Date(lun2);d.setDate(lun2.getDate()+i);return d.toISOString().split("T")[0];});
+              const snap2 = await getDocs(query(collection(_db,"reservas"), where("fecha","in",fechas2)));
+              const reservas2 = snap2.docs.map(d=>({id:d.id,...d.data()}));
+              await exportarPlanillaSemanal(reservas2, null);
+            } catch(e){ console.error(e); alert("Error al exportar"); }
+            setExportando(false);
+          }}
             disabled={exportando}
             style={{background:"#fff", border:"0.5px solid #e0e0e0", borderRadius:8, padding:"8px 14px", fontSize:13, cursor:"pointer", color:"#555"}}>
             {exportando ? "..." : "📋 Planilla semanal"}
