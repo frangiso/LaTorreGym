@@ -22,7 +22,8 @@ function getHoy() {
 
 export default function Dashboard() {
   const { fecha, dia, label } = getHoy();
-  const { alumnos, avisos }   = useData(); // ya viene del contexto, 0 lecturas extra
+  const { alumnos, avisos, config } = useData(); // ya viene del contexto, 0 lecturas extra
+  const cupoMax = config?.cupoMaximo ?? 15;
   const [reservasHoy, setReservasHoy]   = useState([]);
   const [listaEspera, setListaEspera]   = useState([]);
   const [cargando, setCargando]         = useState(true);
@@ -224,7 +225,7 @@ export default function Dashboard() {
             <div key={hora} style={{background:"#fff", border:"0.5px solid #e0e0e0", borderRadius:12, overflow:"hidden"}}>
               <div style={{background:"#111", padding:"10px 16px", display:"flex", justifyContent:"space-between", alignItems:"center"}}>
                 <span style={{color:"#F5C400", fontSize:16, fontWeight:500}}>{hora}</span>
-                <span style={{color:"#888", fontSize:12}}>{porHora[hora].length}/15 — {porHora[hora].filter(r=>r.asistio===true).length} presentes</span>
+                <span style={{color:"#888", fontSize:12}}>{porHora[hora].length}/{cupoMax} — {porHora[hora].filter(r=>r.asistio===true).length} presentes</span>
               </div>
               <div style={{padding:"8px 12px", display:"flex", flexDirection:"column", gap:6}}>
                 {porHora[hora].map(r => (

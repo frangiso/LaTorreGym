@@ -26,10 +26,9 @@ function getFechasDeSemana(inicio) {
   return f;
 }
 
-const CUPO = 15;
-
 export default function GrillaSemanal() {
-  const { feriados: feriadosCtx }       = useData();
+  const { feriados: feriadosCtx, config } = useData();
+  const CUPO = config?.cupoMaximo ?? 15;
   const [feriadosLocal, setFeriadosLocal] = useState({});
   const feriados = Object.keys(feriadosLocal).length > 0 ? feriadosLocal : feriadosCtx;
   const [semanaOffset, setSemanaOffset] = useState(0);
@@ -205,13 +204,14 @@ export default function GrillaSemanal() {
         ))}
       </div>
 
-      {modalSlot && <ModalSlot slot={modalSlot} onClose={() => setModalSlot(null)} />}
+      {modalSlot && <ModalSlot slot={modalSlot} cupo={CUPO} onClose={() => setModalSlot(null)} />}
       {modalAgregar && <ModalAgregarAlumno onClose={() => setModalAgregar(false)} />}
     </div>
   );
 }
 
-function ModalSlot({ slot, onClose }) {
+function ModalSlot({ slot, cupo = 15, onClose }) {
+  const CUPO = cupo;
   const { dia, hora, fecha } = slot;
   const [reservas, setReservas] = useState(slot.reservas || []);
   const [cancelando, setCancelando] = useState(null);
