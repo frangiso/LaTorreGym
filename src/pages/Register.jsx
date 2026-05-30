@@ -67,6 +67,7 @@ export default function Register() {
         const liberadoSnap = await getDoc(liberadoRef);
         if (liberadoSnap.exists()) {
           esEmailLiberado = true;
+          auth.languageCode = 'es';
           await sendPasswordResetEmail(auth, form.email.trim());
           await setDoc(liberadoRef, {
             ...liberadoSnap.data(),

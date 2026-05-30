@@ -18,6 +18,7 @@ export default function Login() {
     if (!email.trim()) { setError("Ingresá tu email para recuperar la contraseña."); return; }
     setResetLoading(true);
     try {
+      auth.languageCode = 'es';
       await sendPasswordResetEmail(auth, email.trim());
       setResetEnviado(true);
       setError("");
