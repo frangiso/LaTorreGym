@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "../../firebase";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import { doc, getDoc, setDoc, collection, getDocs, writeBatch } from "firebase/firestore";
 import { db } from "../../firebase";
 import LtHeader from "../../components/LtHeader";
@@ -13,6 +14,7 @@ import ConfigGimnasio from "./ConfigGimnasio";
 import Rutinas from "./Rutinas";
 import TurnosFijosPanel from "./TurnosFijosPanel";
 import Avisos from "./Avisos";
+import RegistroActividad from "./RegistroActividad";
 
 async function autoSeed() {
   // Cachear en localStorage: si ya corrió esta semana, no volver a hacer getDocs
@@ -140,6 +142,9 @@ const TABS = [
 ];
 
 export default function PanelProfe() {
+  const { perfil: miPerfil } = useAuth();
+  const miRol = miPerfil?.rol || "profe";
+  const esDueno = miRol === "dueno";
   const [tab, setTab] = useState("dashboard");
   const [seedListo, setSeedListo] = useState(false);
   const navigate = useNavigate();
@@ -182,8 +187,9 @@ export default function PanelProfe() {
         {tab === "alumnos"   && <PanelAlumnos />}
         {tab === "pagos"     && <PagosPendientes />}
         {tab === "rutinas"   && <Rutinas />}
-        {tab === "avisos"    && <Avisos />}
-        {tab === "config"    && <ConfigGimnasio />}
+        {tab === "avisos"    && esDueno && <Avisos />}
+        {tab === "actividad" && esDueno && <RegistroActividad />}
+        {tab === "config"    && esDueno && <ConfigGimnasio />}
       </div>
 
       {/* Bottom bar — fija abajo */}

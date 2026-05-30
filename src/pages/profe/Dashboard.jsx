@@ -6,7 +6,7 @@ import {
 import { db } from "../../firebase";
 import { useData } from "../../context/DataContext";
 import { correrMantenimiento, alumnosProximosAVencer } from "../../utils/mantenimiento";
-import { exportarAlumnos, exportarPlanillaDia } from "../../utils/exportarExcel";
+import { exportarAlumnos, exportarPlanillaDia, exportarPlanillaSemanal } from "../../utils/exportarExcel";
 import ModalAgregarAlumno from "./ModalAgregarAlumno";
 
 const DIAS_ES = ["DOMINGO","LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
@@ -164,10 +164,10 @@ export default function Dashboard() {
           <p style={{fontSize:13, color:"#888", margin:0, textTransform:"capitalize"}}>{label}</p>
         </div>
         <div style={{display:"flex", gap:8}}>
-          <button onClick={() => { setExportando(true); exportarPlanillaDia(reservasHoy, fecha).finally(() => setExportando(false)); }}
+          <button onClick={() => { setExportando(true); exportarPlanillaSemanal(reservasSemana || reservasHoy, fecha).finally(() => setExportando(false)); }}
             disabled={exportando}
             style={{background:"#fff", border:"0.5px solid #e0e0e0", borderRadius:8, padding:"8px 14px", fontSize:13, cursor:"pointer", color:"#555"}}>
-            {exportando ? "..." : "📋 Planilla del día"}
+            {exportando ? "..." : "📋 Planilla semanal"}
           </button>
           <button onClick={() => { setExportando(true); exportarAlumnos(alumnos).finally(() => setExportando(false)); }}
             disabled={exportando}

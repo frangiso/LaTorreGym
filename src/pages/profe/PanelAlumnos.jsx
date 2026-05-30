@@ -1,7 +1,8 @@
 import { generarReservasFijas, borrarReservasFijas } from "../../reservasFijas";
 import { useData } from "../../context/DataContext";
+import { useAuth } from "../../context/AuthContext";
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, doc, updateDoc, getDoc, deleteDoc, query, where, getDocs, writeBatch, setDoc, serverTimestamp } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, getDoc, deleteDoc, query, where, getDocs, writeBatch, setDoc, serverTimestamp, addDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import ModalAgregarAlumno from "./ModalAgregarAlumno";
 
@@ -15,6 +16,7 @@ const ESTADO_COLOR = {
 
 export default function PanelAlumnos() {
   const { alumnos, config }         = useData();
+  const { perfil: miPerfil }          = useAuth();
   const planes                      = config?.planes || [];
   const [filtro, setFiltro]         = useState("todos");
   const [busqueda, setBusqueda]     = useState("");
@@ -97,6 +99,7 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
     metodoPago:          a.metodoPago || "efectivo",
     clasesUsadasMes:     a.clasesUsadasMes ?? 0,
     recuperacionesUsadas: a.recuperacionesUsadas ?? 0,
+    descuentoFutbol:     a.descuentoFutbol ?? false,
   });
   // turnosFijos: [{ dia, hora }]
   const [turnosFijos, setTurnosFijos] = useState(a.turnosFijos || []);
@@ -137,6 +140,7 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
       metodoPago:         form.metodoPago,
       clasesUsadasMes:    Number(form.clasesUsadasMes),
       recuperacionesUsadas: Number(form.recuperacionesUsadas ?? 0),
+      descuentoFutbol:    form.descuentoFutbol ?? false,
       turnosFijos,
       turnosFijosEstado: turnosFijos.length > 0 ? "aprobado" : null,
     };
@@ -310,6 +314,17 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
                   <div>
                     <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 3 }}>Clases usadas este mes</label>
                     <input type="number" name="clasesUsadasMes" value={form.clasesUsadasMes} onChange={handleChange} min="0" style={inp} />
+                  </div>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "10px 14px", background: form.descuentoFutbol ? "#dcfce7" : "#f9f9f9", borderRadius: 8, border: "0.5px solid " + (form.descuentoFutbol ? "#86efac" : "#e0e0e0") }}>
+                      <input type="checkbox" checked={form.descuentoFutbol ?? false}
+                        onChange={e => setForm(f => ({ ...f, descuentoFutbol: e.target.checked }))}
+                        style={{ width: 16, height: 16, accentColor: "#10b981" }} />
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: form.descuentoFutbol ? "#065f46" : "#555" }}>⚽ Familiar escuela de fútbol La Torre</div>
+                        <div style={{ fontSize: 11, color: "#888" }}>Aplica 15% de descuento en la cuota mensual</div>
+                      </div>
+                    </label>
                   </div>
                   <div>
                     <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 3 }}>
