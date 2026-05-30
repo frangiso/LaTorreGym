@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../../context/AuthContext";
+import { useData } from "../../context/DataContext";
 import {
   doc, updateDoc, collection, query, where,
   onSnapshot, writeBatch, getDocs, serverTimestamp
 } from "firebase/firestore";
 import { db } from "../../firebase";
-import { useAuth } from "../../context/AuthContext";
-import { useData } from "../../context/DataContext";
 
 const DIAS       = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
 const DIAS_FULL  = { LUNES:"Lunes", MARTES:"Martes", MIERCOLES:"Miércoles",
@@ -32,8 +32,8 @@ function getFechasSemanaActual() {
 }
 
 export default function SolicitarTurnosFijos({ perfil, user }) {
-  const { config } = useData();
-  const CUPO = config?.cupoMaximo ?? 15;
+  const { config }                    = useData();
+  const CUPO                          = config?.cupoMaximo ?? 15;
   const [diaActivo, setDia]           = useState("LUNES");
   const [seleccionados, setSel]       = useState([]);
   const [ocupacion, setOcupacion]     = useState({});
@@ -86,14 +86,12 @@ export default function SolicitarTurnosFijos({ perfil, user }) {
     if (planId !== "lv" && seleccionados.length !== cantMax) return;
     setGuardando(true);
     try {
-      // Verificar cupos
       for (const t of seleccionados) {
         if (cupoDisp(t.dia, t.hora) <= 0 && !esFijo(t.dia, t.hora)) {
           alert("El turno "+t.dia+" "+t.hora+" se llenó. Elegí otro.");
           setGuardando(false); return;
         }
       }
-      // Borrar reservas fijas futuras
       const hoy = new Date().toISOString().split("T")[0];
       const qBorrar = query(collection(db,"reservas"), where("alumnoId","==",user.uid), where("esFijo","==",true));
       const snapBorrar = await getDocs(qBorrar);
@@ -103,13 +101,11 @@ export default function SolicitarTurnosFijos({ perfil, user }) {
         futuras.forEach(d => bBorrar.delete(doc(db,"reservas",d.id)));
         await bBorrar.commit();
       }
-      // Actualizar perfil
       await updateDoc(doc(db,"usuarios",user.uid), {
         turnosFijos: seleccionados,
         turnosFijosEstado: "aprobado",
         recuperacionesUsadas: 0,
       });
-      // Crear reservas nuevas
       const nombre = ((perfil?.nombre||"")+" "+(perfil?.apellido||"")).trim();
       const hoyD = new Date(); hoyD.setHours(0,0,0,0);
       const dow  = hoyD.getDay();
