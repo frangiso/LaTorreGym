@@ -4,6 +4,8 @@ import {
   onSnapshot, writeBatch, getDocs, serverTimestamp
 } from "firebase/firestore";
 import { db } from "../../firebase";
+import { useAuth } from "../../context/AuthContext";
+import { useData } from "../../context/DataContext";
 
 const DIAS       = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
 const DIAS_FULL  = { LUNES:"Lunes", MARTES:"Martes", MIERCOLES:"Miércoles",
