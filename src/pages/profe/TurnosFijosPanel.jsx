@@ -267,10 +267,10 @@ export default function TurnosFijosPanel() {
   // ---- VISTA PRINCIPAL ----
   const conFijos = alumnos.filter(a => a.turnosFijosEstado === "aprobado" && (a.turnosFijos||[]).length > 0);
   const sinFijosBase = alumnos.filter(a => (a.estado === "activo" || a.estado === "pago_pendiente") && a.planId && a.planId !== "suelta" && a.turnosFijosEstado !== "aprobado");
-  const conFijosBase = alumnos.filter(a => a.turnosFijosEstado === "aprobado" && a.turnosFijos?.length > 0);
+  const alumnosConFijosBase = alumnos.filter(a => a.turnosFijosEstado === "aprobado" && a.turnosFijos?.length > 0);
   const filtrarAlumno = a => !buscar.trim() || (a.nombre+" "+a.apellido).toLowerCase().includes(buscar.toLowerCase()) || (a.email||"").toLowerCase().includes(buscar.toLowerCase());
   const sinFijos = sinFijosBase.filter(filtrarAlumno);
-  const conFijos = conFijosBase.filter(filtrarAlumno);
+  const alumnosConFijos = alumnosConFijosBase.filter(filtrarAlumno);
 
   return (
     <div>
@@ -318,7 +318,7 @@ export default function TurnosFijosPanel() {
 
       <div>
         <div style={{fontSize:13,fontWeight:500,color:"#888",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:10}}>
-          Turnos activos ({conFijos.length})
+          Turnos activos ({alumnosConFijos.length})
         </div>
         {conFijos.length === 0 ? (
           <div style={{background:"#fff",border:"0.5px solid #e0e0e0",borderRadius:12,padding:"32px",textAlign:"center",color:"#aaa"}}>
@@ -326,7 +326,7 @@ export default function TurnosFijosPanel() {
           </div>
         ) : (
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {conFijos.map(a => (
+            {alumnosConFijos.map(a => (
               <div key={a.uid} style={{background:"#fff",border:"0.5px solid #e0e0e0",borderRadius:12,padding:"14px 16px"}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -365,13 +365,13 @@ export default function TurnosFijosPanel() {
     
 
       {/* Alumnos CON turnos fijos */}
-      {conFijos.length > 0 && (
+      {alumnosConFijos.length > 0 && (
         <div style={{marginTop:24}}>
           <h3 style={{fontSize:14,fontWeight:500,color:"#888",marginBottom:12}}>
-            Con turnos asignados ({conFijos.length})
+            Con turnos asignados ({alumnosConFijos.length})
           </h3>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {conFijos.map(a => (
+            {alumnosConFijos.map(a => (
               <div key={a.uid} style={{background:"#fff",border:"0.5px solid #e0e0e0",borderRadius:10,padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
                 <div>
                   <div style={{fontSize:14,fontWeight:500}}>{a.nombre} {a.apellido}</div>
