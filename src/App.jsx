@@ -79,7 +79,7 @@ function RutaProtegida({ children }) {
   if (!perfil) return <SinPerfil />;
 
   const { estado, rol } = perfil;
-  if (rol === "profe") return children;
+  if (rol === "profe" || rol === "dueno") return children;
   if (estado === "pendiente") return <Navigate to="/instructivo" replace />;
   if (estado === "pago_pendiente") return <Navigate to="/espera" replace />;
   if (estado === "activo") return children;
@@ -101,7 +101,7 @@ export default function App() {
     if (!perfil) return <SinPerfil />;
 
     // Redirigir según rol/estado
-    if (perfil.rol === "profe") return <Navigate to="/profe" replace />;
+    if (perfil.rol === "profe" || perfil.rol === "dueno") return <Navigate to="/profe" replace />;
     if (perfil.estado === "pendiente") return <Navigate to="/instructivo" replace />;
     if (perfil.estado === "pago_pendiente") return <Navigate to="/espera" replace />;
     if (perfil.estado === "activo") return <Navigate to="/alumno" replace />;
