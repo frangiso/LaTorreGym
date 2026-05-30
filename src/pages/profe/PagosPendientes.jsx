@@ -142,30 +142,58 @@ export default function PagosPendientes() {
       )}
 
       {/* ====== MODAL DESCUENTO 50% ====== */}
-      {descuentoModal && (
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-          <div style={{background:"#fff",borderRadius:16,padding:24,maxWidth:400,width:"100%"}}>
-            <h3 style={{fontSize:16,fontWeight:500,marginBottom:8}}>Descuento especial 50%</h3>
-            <p style={{fontSize:13,color:"#888",marginBottom:16,lineHeight:1.5}}>
-              Este descuento es excepcional. Ingresá el motivo para dejarlo registrado.
-            </p>
-            <input value={motivoDescuento} onChange={e => setMotivoDescuento(e.target.value)}
-              placeholder="Motivo (ej: amigo del dueño)"
-              style={{width:"100%",padding:"10px 12px",borderRadius:8,border:"0.5px solid #e0e0e0",fontSize:13,marginBottom:16,boxSizing:"border-box"}} />
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={() => motivoDescuento.trim() && confirmar(descuentoModal, 50, motivoDescuento)}
-                disabled={!motivoDescuento.trim() || procesando === descuentoModal?.uid}
-                style={{flex:1,background:"#dc2626",color:"#fff",border:"none",borderRadius:8,padding:"10px",fontSize:13,fontWeight:500,cursor:"pointer"}}>
-                Confirmar con 50% off
-              </button>
-              <button onClick={() => { setDescuentoModal(null); setMotivoDescuento(""); }}
-                style={{background:"transparent",border:"0.5px solid #e0e0e0",borderRadius:8,padding:"10px 16px",fontSize:13,cursor:"pointer",color:"#888"}}>
-                Cancelar
-              </button>
+      {descuentoModal && (() => {
+        const cuotaBase = descuentoModal.descuentoFutbol
+          ? Math.round((descuentoModal.montoPagado || 0) * 0.85)
+          : (descuentoModal.montoPagado || 0);
+        const cuotaCon50 = Math.round(cuotaBase * 0.5);
+        const inscripcion = descuentoModal.inscripcionPagada ? 0 : INSCRIPCION;
+        const totalFinal = cuotaCon50 + inscripcion;
+        return (
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+            <div style={{background:"#fff",borderRadius:16,padding:24,maxWidth:400,width:"100%"}}>
+              <h3 style={{fontSize:16,fontWeight:500,marginBottom:8}}>🎁 Descuento especial 50%</h3>
+              <p style={{fontSize:13,color:"#888",marginBottom:12,lineHeight:1.5}}>
+                Este descuento es excepcional. Ingresá el motivo para dejarlo registrado.
+              </p>
+              <div style={{background:"#fff5f5",border:"1px solid #fca5a5",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:13}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:4,color:"#555"}}>
+                  <span>Cuota original</span>
+                  <span>${cuotaBase.toLocaleString("es-AR")}</span>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:inscripcion>0?4:0,color:"#dc2626",fontWeight:500}}>
+                  <span>Con 50% off</span>
+                  <span>${cuotaCon50.toLocaleString("es-AR")}</span>
+                </div>
+                {inscripcion > 0 && (
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:4,color:"#555"}}>
+                    <span>Inscripción (fija)</span>
+                    <span>${inscripcion.toLocaleString("es-AR")}</span>
+                  </div>
+                )}
+                <div style={{display:"flex",justifyContent:"space-between",borderTop:"0.5px solid #fca5a5",paddingTop:6,marginTop:4,fontWeight:700,color:"#111",fontSize:14}}>
+                  <span>Total a cobrar</span>
+                  <span>${totalFinal.toLocaleString("es-AR")}</span>
+                </div>
+              </div>
+              <input value={motivoDescuento} onChange={e => setMotivoDescuento(e.target.value)}
+                placeholder="Motivo (ej: amigo del dueño)"
+                style={{width:"100%",padding:"10px 12px",borderRadius:8,border:"0.5px solid #e0e0e0",fontSize:13,marginBottom:16,boxSizing:"border-box"}} />
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={() => motivoDescuento.trim() && confirmar(descuentoModal, 50, motivoDescuento)}
+                  disabled={!motivoDescuento.trim() || procesando === descuentoModal?.uid}
+                  style={{flex:1,background:"#dc2626",color:"#fff",border:"none",borderRadius:8,padding:"10px",fontSize:13,fontWeight:500,cursor:"pointer"}}>
+                  Confirmar con 50% off
+                </button>
+                <button onClick={() => { setDescuentoModal(null); setMotivoDescuento(""); }}
+                  style={{background:"transparent",border:"0.5px solid #e0e0e0",borderRadius:8,padding:"10px 16px",fontSize:13,cursor:"pointer",color:"#888"}}>
+                  Cancelar
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ====== CAJA DEL MES ====== */}
       <div style={{marginBottom:32}}>
