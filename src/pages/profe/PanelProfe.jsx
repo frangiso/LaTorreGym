@@ -45,12 +45,12 @@ async function autoSeed() {
     for (const dia of DIAS_LV) {
       for (let h = 7; h <= 22; h++) {
         const hora = String(h).padStart(2, "0") + ":00";
-        slots.push({ id: dia + "_" + hora.replace(":", ""), dia, hora, cupo: configSnap.data()?.15imo ?? 15 });
+        slots.push({ id: dia + "_" + hora.replace(":", ""), dia, hora, cupo: 15 });
       }
     }
     for (let h = 8; h <= 13; h++) {
       const hora = String(h).padStart(2, "0") + ":00";
-      slots.push({ id: "SABADO_" + hora.replace(":", ""), dia: "SABADO", hora, cupo: configSnap.data()?.15imo ?? 15 });
+      slots.push({ id: "SABADO_" + hora.replace(":", ""), dia: "SABADO", hora, cupo: 15 });
     }
     const CHUNK = 400;
     for (let i = 0; i < slots.length; i += CHUNK) {
