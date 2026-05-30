@@ -27,6 +27,28 @@ export default function InstructivoPlanes() {
       <LtHeader onLogout={() => signOut(auth)} />
       <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 16px 48px" }}>
 
+        {/* Clase de cortesía */}
+        <div style={{ background: "#dcfce7", border: "1px solid #86efac", borderRadius: 12, padding: "14px 18px", marginBottom: 16, textAlign: "center" }}>
+          <div style={{ fontSize: 18, marginBottom: 4 }}>🎁</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#065f46" }}>Primera clase de cortesía gratis</div>
+          <div style={{ fontSize: 13, color: "#047857", marginTop: 4 }}>Podés probar una clase sin costo antes de inscribirte.</div>
+        </div>
+
+        {/* Inscripción */}
+        <div style={{ background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 12, padding: "14px 18px", marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#92400e", marginBottom: 4 }}>📋 Inscripción al gimnasio: $15.000</div>
+          <div style={{ fontSize: 12, color: "#b45309", lineHeight: 1.5 }}>Se abona una única vez al registrarte, en recepción junto con tu primera cuota.</div>
+        </div>
+
+        {/* Pagos presenciales */}
+        <div style={{ background: "#f0f4ff", border: "1px solid #c7d2fe", borderRadius: 12, padding: "14px 18px", marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#3730a3", marginBottom: 4 }}>💳 Los pagos son presenciales en recepción</div>
+          <div style={{ fontSize: 12, color: "#4338ca", lineHeight: 1.5 }}>
+            Tanto la inscripción como la cuota mensual se abonan en efectivo o transferencia directamente en La Torre Gym.<br/>
+            Una vez que el personal confirme tu pago, quedás habilitado para usar el gimnasio.
+          </div>
+        </div>
+
         {/* Bienvenida */}
         <div style={{
           background: "#1a1a1a", borderRadius: 16, padding: "24px 20px",
