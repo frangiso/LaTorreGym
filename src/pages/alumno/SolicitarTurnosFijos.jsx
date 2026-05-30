@@ -15,7 +15,7 @@ const DIAS_CORTO = { LUNES:"Lun", MARTES:"Mar", MIERCOLES:"Mie",
 const TURNOS_POR_PLAN = { "2dias":2, "3dias":3, "lv":6, "suelta":0 };
 
 function getHorasDia(dia) {
-  const [ini, fin] = dia === "SABADO" ? [8,13] : [7,22];
+  const [ini, fin] = dia === "SABADO" ? [8,13] : [8,22];
   return Array.from({length: fin-ini+1}, (_,i) => String(i+ini).padStart(2,"0")+":00");
 }
 
@@ -174,7 +174,7 @@ export default function SolicitarTurnosFijos({ perfil, user }) {
         </div>
         <div style={{background:"#fef3c7", border:"1px solid #fcd34d", borderRadius:8, padding:"10px 14px", marginTop:12}}>
           <p style={{fontSize:12, color:"#92400e", margin:0, lineHeight:1.5}}>
-            ⚠️ Los turnos fijos solo puede modificarlos el profe. Si necesitás cambiarlos, comunicate directamente con él.
+            ⚠️ Para modificar tus turnos fijos acercate a recepción o comunicate con el profe.
           </p>
         </div>
       </div>
