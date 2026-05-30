@@ -1,12 +1,10 @@
-import { useData } from "../../context/DataContext";
 import { useEffect, useState } from "react";
 import {
   doc, updateDoc, collection, query, where,
   onSnapshot, writeBatch, getDocs, serverTimestamp
 } from "firebase/firestore";
 import { db } from "../../firebase";
-import { useAuth } from "../../context/AuthContext";
-
+import { useData } from "../../context/DataContext";
 
 const DIAS       = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
 const DIAS_FULL  = { LUNES:"Lunes", MARTES:"Martes", MIERCOLES:"Miércoles",
@@ -14,6 +12,7 @@ const DIAS_FULL  = { LUNES:"Lunes", MARTES:"Martes", MIERCOLES:"Miércoles",
 const DIAS_CORTO = { LUNES:"Lun", MARTES:"Mar", MIERCOLES:"Mie",
                      JUEVES:"Jue", VIERNES:"Vie", SABADO:"Sab" };
 const TURNOS_POR_PLAN = { "2dias":2, "3dias":3, "lv":6, "suelta":0 };
+const CUPO_DEFAULT = 15; // fallback si config no cargó aún
 
 function getHorasDia(dia) {
   const [ini, fin] = dia === "SABADO" ? [8,13] : [7,22];
@@ -34,7 +33,7 @@ function getFechasSemanaActual() {
 
 export default function SolicitarTurnosFijos({ perfil, user }) {
   const { config }                    = useData();
-  const CUPO                          = config?.cupoMaximo ?? 15;
+  const CUPO = config?.cupoMaximo ?? CUPO_DEFAULT;
   const [diaActivo, setDia]           = useState("LUNES");
   const [seleccionados, setSel]       = useState([]);
   const [ocupacion, setOcupacion]     = useState({});
