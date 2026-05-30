@@ -46,17 +46,6 @@ export default function PagoInstructivo() {
     }
   }
 
-  function abrirWhatsApp() {
-    if (!config?.whatsapp || !planSeleccionado) return;
-    const nombre = perfil ? `${perfil.nombre} ${perfil.apellido}` : "";
-    const precio = metodo === "transferencia"
-      ? `$${planSeleccionado.precioTransferencia.toLocaleString("es-AR")}`
-      : `$${planSeleccionado.precioEfectivo.toLocaleString("es-AR")}`;
-    const texto = encodeURIComponent(
-      `Hola! Soy ${nombre} y acabo de hacer la ${metodo === "transferencia" ? "transferencia" : "el pago en efectivo"} del plan "${planSeleccionado.nombre}" (${precio}). Te mando el comprobante.`
-    );
-    window.open(`https://wa.me/549${config.whatsapp}?text=${texto}`, "_blank");
-  }
 
   if (!config) return <div style={{ minHeight: "100vh", background: "#111" }} />;
 
@@ -101,7 +90,7 @@ export default function PagoInstructivo() {
           <label className="lt-label">Método de pago</label>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 6 }}>
             {[
-              { key: "transferencia", label: "Transferencia", sub: "Enviás comprobante por WhatsApp" },
+              { key: "transferencia", label: "Transferencia", sub: "Pagás en el gimnasio" },
               { key: "efectivo", label: "Efectivo", sub: "Pagás en el gimnasio" }
             ].map(m => (
               <div key={m.key} onClick={() => setMetodo(m.key)}
@@ -131,23 +120,8 @@ export default function PagoInstructivo() {
               </button>
             </div>
             <p style={{ fontSize: 12, color: "#666", marginTop: 10, marginBottom: 0, lineHeight: 1.5 }}>
-              Una vez realizada la transferencia, enviá el comprobante por WhatsApp al gimnasio. Tu acceso se activará cuando el profe confirme el pago.
+              Pasá por el gimnasio a abonar la transferencia. Tu acceso se activará cuando el profe confirme el pago.
             </p>
-            {config.whatsapp && (
-              <button onClick={abrirWhatsApp}
-                style={{
-                  width: "100%", marginTop: 12, background: "#25D366", color: "#fff",
-                  border: "none", borderRadius: 8, padding: "11px", fontSize: 13,
-                  fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center",
-                  justifyContent: "center", gap: 8
-                }}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-                  <circle cx="8" cy="8" r="7.5" fill="#25D366" />
-                  <path d="M11.4 9.7c-.23-.12-1.37-.68-1.58-.76-.21-.08-.37-.12-.52.12-.16.23-.6.76-.74.91-.14.16-.27.17-.5.06-.23-.12-.96-.35-1.83-1.13-.68-.6-1.13-1.35-1.27-1.57-.13-.23 0-.35.1-.47l.34-.4c.11-.13.14-.23.21-.38.07-.15.04-.29-.02-.4-.06-.12-.52-1.24-.71-1.7-.19-.45-.38-.39-.52-.4H4.1c-.14 0-.37.05-.56.27-.2.22-.75.73-.75 1.78s.77 2.06.87 2.2c.11.15 1.5 2.3 3.64 3.22.51.22.91.35 1.22.45.51.16.98.14 1.35.08.41-.07 1.26-.51 1.44-1.01.18-.5.18-.93.12-1.01-.06-.09-.21-.14-.44-.25z" fill="white" />
-                </svg>
-                Enviar comprobante por WhatsApp
-              </button>
-            )}
           </div>
         )}
 

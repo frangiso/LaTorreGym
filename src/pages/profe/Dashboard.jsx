@@ -251,7 +251,7 @@ export default function Dashboard() {
                         style={{background:r.asistio===false?"#ef4444":"transparent",color:r.asistio===false?"#fff":"#ef4444",border:"1px solid #ef4444",borderRadius:6,padding:"4px 10px",fontSize:12,cursor:"pointer"}}>
                         ✗ Ausente
                       </button>
-                      <CancelarBtn reservaId={r.id}/>
+                      <CancelarBtn reservaId={r.id} reserva={r}/>
                     </div>
                   </div>
                 ))}
@@ -265,15 +265,14 @@ export default function Dashboard() {
   );
 }
 
-function CancelarBtn({ reservaId }) {
+function CancelarBtn({ reservaId, reserva }) {
   const [confirm, setConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   if (confirm) return (
     <div style={{display:"flex", gap:4}}>
       <button onClick={async () => {
           setLoading(true);
-          // Leer la reserva antes de borrar para notificar
-          const r = reservas?.find?.(x => x.id === reservaId) || {};
+          const r = reserva || {};
           await deleteDoc(doc(db,"reservas",reservaId));
           if (r.alumnoId) {
             await addDoc(collection(db,"notificaciones"), {

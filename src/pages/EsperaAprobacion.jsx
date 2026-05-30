@@ -43,15 +43,6 @@ export default function EsperaAprobacion() {
     setPaso("espera");
   }
 
-  function abrirWhatsApp() {
-    if (!config?.whatsapp || !planSeleccionado) return;
-    const nombre = perfil ? perfil.nombre + " " + perfil.apellido : "";
-    const precio = metodo === "transferencia" ? planSeleccionado.precioTransferencia : planSeleccionado.precioEfectivo;
-    const texto = encodeURIComponent(
-      "Hola! Soy " + nombre + " y quiero renovar el plan \"" + planSeleccionado.nombre + "\" ($" + precio.toLocaleString("es-AR") + ") por " + metodo + ". Te mando el comprobante."
-    );
-    window.open("https://wa.me/549" + config.whatsapp + "?text=" + texto, "_blank");
-  }
 
   if (!config) return <div style={{ minHeight: "100vh", background: "#f7f7f7" }} />;
 
@@ -109,7 +100,7 @@ export default function EsperaAprobacion() {
               </div>
             )}
 
-            {!planAgotado && (
+            {!planVencido && (
               <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center", marginBottom: 32 }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#F5C400", display: "inline-block" }}/>
                 <span style={{ fontSize: 13, color: "#888" }}>Esperando confirmacion del profe</span>
@@ -162,17 +153,6 @@ export default function EsperaAprobacion() {
               </div>
             )}
 
-            {/* WhatsApp */}
-            {metodo === "transferencia" && config.whatsapp && (
-              <button onClick={abrirWhatsApp}
-                style={{ width: "100%", background: "#25D366", color: "#fff", border: "none", borderRadius: 8, padding: "11px", fontSize: 13, fontWeight: 500, cursor: "pointer", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-                  <circle cx="8" cy="8" r="7.5" fill="#25D366"/>
-                  <path d="M11.4 9.7c-.23-.12-1.37-.68-1.58-.76-.21-.08-.37-.12-.52.12-.16.23-.6.76-.74.91-.14.16-.27.17-.5.06-.23-.12-.96-.35-1.83-1.13-.68-.6-1.13-1.35-1.27-1.57-.13-.23 0-.35.1-.47l.34-.4c.11-.13.14-.23.21-.38.07-.15.04-.29-.02-.4-.06-.12-.52-1.24-.71-1.7-.19-.45-.38-.39-.52-.4H4.1c-.14 0-.37.05-.56.27-.2.22-.75.73-.75 1.78s.77 2.06.87 2.2c.11.15 1.5 2.3 3.64 3.22.51.22.91.35 1.22.45.51.16.98.14 1.35.08.41-.07 1.26-.51 1.44-1.01.18-.5.18-.93.12-1.01-.06-.09-.21-.14-.44-.25z" fill="white"/>
-                </svg>
-                Enviar comprobante por WhatsApp
-              </button>
-            )}
 
             <button onClick={enviarRenovacion} disabled={!planSeleccionado || enviando}
               style={{ width: "100%", background: "#F5C400", color: "#111", border: "none", borderRadius: 10, padding: "13px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
