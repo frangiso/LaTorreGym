@@ -17,6 +17,7 @@ function getHorasDia(dia) {
 export default function TurnosFijosPanel() {
   const { alumnos, config }       = useData();
   const CUPO                      = config?.cupoMaximo ?? 15;
+  const [buscar, setBuscar]       = useState("");
   const planes                    = config?.planes || [];
 
   const [ocupacion, setOcupacion] = useState({});
