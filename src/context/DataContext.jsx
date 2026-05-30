@@ -15,7 +15,7 @@ export function DataProvider({ children }) {
 
   const uid    = user?.uid || null;
   const rol    = perfil?.rol || null;
-  const esProfe = rol === "profe";
+  const esProfe = rol === "profe" || rol === "dueno";
 
   // Config - para todos los usuarios logueados
   useEffect(() => {
