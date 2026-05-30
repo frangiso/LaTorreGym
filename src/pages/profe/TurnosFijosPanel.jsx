@@ -266,10 +266,21 @@ export default function TurnosFijosPanel() {
 
   // ---- VISTA PRINCIPAL ----
   const conFijos = alumnos.filter(a => a.turnosFijosEstado === "aprobado" && (a.turnosFijos||[]).length > 0);
-  const sinFijos = alumnos.filter(a => (a.estado === "activo" || a.estado === "pago_pendiente") && a.planId && a.planId !== "suelta" && a.turnosFijosEstado !== "aprobado");
+  const sinFijosBase = alumnos.filter(a => (a.estado === "activo" || a.estado === "pago_pendiente") && a.planId && a.planId !== "suelta" && a.turnosFijosEstado !== "aprobado");
+  const conFijosBase = alumnos.filter(a => a.turnosFijosEstado === "aprobado" && a.turnosFijos?.length > 0);
+  const filtrarAlumno = a => !buscar.trim() || (a.nombre+" "+a.apellido).toLowerCase().includes(buscar.toLowerCase()) || (a.email||"").toLowerCase().includes(buscar.toLowerCase());
+  const sinFijos = sinFijosBase.filter(filtrarAlumno);
+  const conFijos = conFijosBase.filter(filtrarAlumno);
 
   return (
     <div>
+      {/* Buscador */}
+      <input
+        value={buscar} onChange={e => setBuscar(e.target.value)}
+        placeholder="Buscar alumno por nombre o email..."
+        style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:"0.5px solid #e0e0e0",
+          fontSize:14, marginBottom:16, boxSizing:"border-box", background:"#fff" }}
+      />
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <h2 style={{fontSize:18,fontWeight:500,margin:0}}>Turnos fijos</h2>
         <button onClick={() => setModalNuevo(true)}
@@ -351,6 +362,32 @@ export default function TurnosFijosPanel() {
           </div>
         )}
       </div>
-    </div>
+    
+
+      {/* Alumnos CON turnos fijos */}
+      {conFijos.length > 0 && (
+        <div style={{marginTop:24}}>
+          <h3 style={{fontSize:14,fontWeight:500,color:"#888",marginBottom:12}}>
+            Con turnos asignados ({conFijos.length})
+          </h3>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {conFijos.map(a => (
+              <div key={a.uid} style={{background:"#fff",border:"0.5px solid #e0e0e0",borderRadius:10,padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+                <div>
+                  <div style={{fontSize:14,fontWeight:500}}>{a.nombre} {a.apellido}</div>
+                  <div style={{fontSize:12,color:"#aaa",marginTop:2}}>
+                    {(a.turnosFijos||[]).map(t=>t.dia.slice(0,3)+" "+t.hora).join(" · ")}
+                  </div>
+                </div>
+                <button onClick={() => setModal(a)}
+                  style={{background:"#f5f5f5",border:"0.5px solid #e0e0e0",borderRadius:8,padding:"6px 14px",fontSize:13,cursor:"pointer",color:"#555"}}>
+                  Editar turnos
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+</div>
   );
 }

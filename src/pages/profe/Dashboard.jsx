@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [cargando, setCargando]         = useState(true);
   const [modalAgregar, setModalAgregar] = useState(false);
   const [exportando, setExportando]     = useState(false);
+  const [reservasSemana, setReservasSemana] = useState([]);
 
   useEffect(() => { correrMantenimiento().catch(console.error); }, []);
 
@@ -41,6 +42,24 @@ export default function Dashboard() {
     });
     return fn;
   }, [fecha]);
+
+  // Listener reservas de la semana
+  useEffect(() => {
+    const hoy = new Date();
+    const dow = hoy.getDay();
+    const lunes = new Date(hoy);
+    lunes.setDate(hoy.getDate() - (dow === 0 ? 6 : dow - 1));
+    const fechasSemana = Array.from({length:6}, (_,i) => {
+      const d = new Date(lunes);
+      d.setDate(lunes.getDate() + i);
+      return d.toISOString().split("T")[0];
+    });
+    const q = query(collection(db, "reservas"), where("fecha", "in", fechasSemana));
+    const fn = onSnapshot(q, snap => {
+      setReservasSemana(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return fn;
+  }, []);
 
   // Lista de espera — solo notificados (filtrado en Firestore)
   useEffect(() => {
