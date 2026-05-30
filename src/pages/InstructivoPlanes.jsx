@@ -25,7 +25,7 @@ export default function InstructivoPlanes() {
 
   return (
     <LtLayout>
-      <LtHeader onLogout={() => signOut(auth)} />
+      <LtHeader onLogout={() => signOut(auth).then(() => navigate("/login", { replace: true }))} />
       <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 16px 48px" }}>
 
         {/* Clase de cortesía */}

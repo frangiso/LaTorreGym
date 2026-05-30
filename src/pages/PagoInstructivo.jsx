@@ -55,7 +55,7 @@ export default function PagoInstructivo() {
 
   return (
     <LtLayout>
-      <LtHeader onLogout={() => signOut(auth)} />
+      <LtHeader onLogout={() => signOut(auth).then(() => navigate("/login", { replace: true }))} />
       <div style={{ maxWidth: 520, margin: "0 auto", padding: "24px 16px 48px" }}>
 
         <h1 style={{ fontSize: 20, fontWeight: 500, color: "#111", marginBottom: 4 }}>Registrar pago</h1>
