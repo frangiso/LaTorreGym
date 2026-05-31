@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { doc, getDoc, updateDoc, addDoc, serverTimestamp, collection, query, where, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, updateDoc, addDoc, serverTimestamp, collection, query, where, onSnapshot, getDocs, writeBatch, deleteDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useData } from "../../context/DataContext";
 import { crearReservasFijas, borrarReservasFijas } from "../../reservasFijas";
@@ -89,6 +89,19 @@ export default function TurnosFijosPanel() {
     if (!confirm("Quitar los turnos fijos de " + alumno.nombre + "?")) return;
     await borrarReservasFijas(alumno.uid);
     await updateDoc(doc(db, "usuarios", alumno.uid), { turnosFijos: [], turnosFijosEstado: null });
+  }
+
+  async function limpiarHuerfanas() {
+    if (!confirm("¿Limpiar reservas de alumnos eliminados? Esto borra slots que no pertenecen a ningún alumno activo.")) return;
+    const uidsActivos = new Set(alumnos.map(a => a.uid));
+    const hoy = new Date().toISOString().split("T")[0];
+    const snap = await getDocs(query(collection(db, "reservas"), where("fecha", ">=", hoy)));
+    const huerfanas = snap.docs.filter(d => !uidsActivos.has(d.data().alumnoId));
+    if (huerfanas.length === 0) { alert("No hay reservas huérfanas."); return; }
+    const batch = writeBatch(db);
+    huerfanas.forEach(d => batch.delete(doc(db, "reservas", d.id)));
+    await batch.commit();
+    alert(`Se eliminaron ${huerfanas.length} reserva${huerfanas.length !== 1 ? "s" : ""} huérfana${huerfanas.length !== 1 ? "s" : ""}.`);
   }
 
   async function crearAlumnoSinApp() {
@@ -284,10 +297,16 @@ export default function TurnosFijosPanel() {
       />
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <h2 style={{fontSize:18,fontWeight:500,margin:0}}>Turnos fijos</h2>
-        <button onClick={() => setModalNuevo(true)}
-          style={{background:"#F5C400",color:"#111",border:"none",borderRadius:8,padding:"9px 18px",fontSize:13,fontWeight:500,cursor:"pointer"}}>
-          + Alumno sin app
-        </button>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={limpiarHuerfanas}
+            style={{background:"#fee2e2",color:"#dc2626",border:"none",borderRadius:8,padding:"9px 14px",fontSize:13,cursor:"pointer"}}>
+            Limpiar datos de prueba
+          </button>
+          <button onClick={() => setModalNuevo(true)}
+            style={{background:"#F5C400",color:"#111",border:"none",borderRadius:8,padding:"9px 18px",fontSize:13,fontWeight:500,cursor:"pointer"}}>
+            + Alumno sin app
+          </button>
+        </div>
       </div>
 
       {sinFijos.length > 0 && (
