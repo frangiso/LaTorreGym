@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { doc, getDoc, updateDoc, addDoc, serverTimestamp, collection, query, where, onSnapshot } from "firebase/firestore";
+import { useMemo, useState } from "react";
+import { doc, updateDoc, addDoc, serverTimestamp, collection } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useData } from "../../context/DataContext";
 import { crearReservasFijas, borrarReservasFijas } from "../../reservasFijas";
@@ -20,44 +20,26 @@ export default function TurnosFijosPanel() {
   const [buscar, setBuscar]       = useState("");
   const planes                    = config?.planes || [];
 
-  const [rawReservas, setRawReservas] = useState([]);
-  const [modal, setModal]             = useState(null);
-  const [diaActivo, setDiaActivo]     = useState("LUNES");
-  const [selProfe, setSelProfe]       = useState([]);
-  const [guardando, setGuardando]     = useState(false);
-  const [modalNuevo, setModalNuevo]   = useState(false);
-  const [formNuevo, setFormNuevo]     = useState({ nombre:"", apellido:"", telefono:"", telefonoEmergencia:"", nombreEmergencia:"", planId:"" });
+  const [modal, setModal]           = useState(null);
+  const [diaActivo, setDiaActivo]   = useState("LUNES");
+  const [selProfe, setSelProfe]     = useState([]);
+  const [guardando, setGuardando]   = useState(false);
+  const [modalNuevo, setModalNuevo] = useState(false);
+  const [formNuevo, setFormNuevo]   = useState({ nombre:"", apellido:"", telefono:"", telefonoEmergencia:"", nombreEmergencia:"", planId:"" });
 
-  // Reservas en tiempo real - semana actual
-  useEffect(() => {
-    const hoy = new Date(); hoy.setHours(0,0,0,0);
-    const dow = hoy.getDay();
-    const lunes = new Date(hoy);
-    lunes.setDate(hoy.getDate() - (dow === 0 ? 6 : dow - 1));
-    const fechas = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(lunes);
-      d.setDate(lunes.getDate() + i);
-      fechas.push(d.toISOString().split("T")[0]);
-    }
-    const q = query(collection(db, "reservas"), where("fecha", "in", fechas));
-    const fn = onSnapshot(q, snap => {
-      setRawReservas(snap.docs.map(d => d.data()));
-    }, err => console.error("ocupacion:", err.message));
-    return () => fn();
-  }, []);
-
-  // Ocupación filtrada: solo alumnos existentes
+  // Ocupación calculada directo desde los perfiles: solo alumnos con fijos aprobados
   const ocupacion = useMemo(() => {
-    const uids = new Set(alumnos.map(a => a.uid));
     const cnt = {};
-    rawReservas.forEach(r => {
-      if (!uids.has(r.alumnoId)) return;
-      const k = r.dia + "_" + r.hora.replace(":", "");
-      cnt[k] = (cnt[k] || 0) + 1;
-    });
+    alumnos
+      .filter(a => a.turnosFijosEstado === "aprobado")
+      .forEach(a => {
+        (a.turnosFijos || []).forEach(t => {
+          const k = t.dia + "_" + t.hora.replace(":", "");
+          cnt[k] = (cnt[k] || 0) + 1;
+        });
+      });
     return cnt;
-  }, [rawReservas, alumnos]);
+  }, [alumnos]);
 
   function cupoDisp(dia, hora) {
     return Math.max(0, CUPO - (ocupacion[dia + "_" + hora.replace(":", "")] || 0));
