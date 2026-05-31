@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { doc, getDoc, updateDoc, addDoc, serverTimestamp, collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useData } from "../../context/DataContext";
@@ -10,7 +10,7 @@ const DIAS_CORTO = { LUNES:"Lun", MARTES:"Mar", MIERCOLES:"Mie", JUEVES:"Jue", V
 const TURNOS_POR_PLAN = { "2dias":2, "3dias":3, "lv":6, "suelta":0 };
 
 function getHorasDia(dia) {
-  const [ini, fin] = dia === "SABADO" ? [8,13] : [7,22];
+  const [ini, fin] = dia === "SABADO" ? [8,13] : [8,22];
   return Array.from({length:fin-ini+1},(_,i)=>String(i+ini).padStart(2,"0")+":00");
 }
 
@@ -20,20 +20,15 @@ export default function TurnosFijosPanel() {
   const [buscar, setBuscar]       = useState("");
   const planes                    = config?.planes || [];
 
-  const uidsActivos = useRef(new Set());
-  useEffect(() => {
-    uidsActivos.current = new Set(alumnos.map(a => a.uid));
-  }, [alumnos]);
+  const [rawReservas, setRawReservas] = useState([]);
+  const [modal, setModal]             = useState(null);
+  const [diaActivo, setDiaActivo]     = useState("LUNES");
+  const [selProfe, setSelProfe]       = useState([]);
+  const [guardando, setGuardando]     = useState(false);
+  const [modalNuevo, setModalNuevo]   = useState(false);
+  const [formNuevo, setFormNuevo]     = useState({ nombre:"", apellido:"", telefono:"", telefonoEmergencia:"", nombreEmergencia:"", planId:"" });
 
-  const [ocupacion, setOcupacion] = useState({});
-  const [modal, setModal]         = useState(null);
-  const [diaActivo, setDiaActivo] = useState("LUNES");
-  const [selProfe, setSelProfe]   = useState([]);
-  const [guardando, setGuardando] = useState(false);
-  const [modalNuevo, setModalNuevo] = useState(false);
-  const [formNuevo, setFormNuevo] = useState({ nombre:"", apellido:"", telefono:"", telefonoEmergencia:"", nombreEmergencia:"", planId:"" });
-
-  // Ocupacion Ocupacion en tiempo real - semana actual
+  // Reservas en tiempo real - semana actual
   useEffect(() => {
     const hoy = new Date(); hoy.setHours(0,0,0,0);
     const dow = hoy.getDay();
@@ -47,17 +42,22 @@ export default function TurnosFijosPanel() {
     }
     const q = query(collection(db, "reservas"), where("fecha", "in", fechas));
     const fn = onSnapshot(q, snap => {
-      const cnt = {};
-      snap.docs.forEach(d => {
-        const r = d.data();
-        if (!uidsActivos.current.has(r.alumnoId)) return;
-        const k = r.dia + "_" + r.hora.replace(":", "");
-        cnt[k] = (cnt[k] || 0) + 1;
-      });
-      setOcupacion(cnt);
+      setRawReservas(snap.docs.map(d => d.data()));
     }, err => console.error("ocupacion:", err.message));
     return () => fn();
   }, []);
+
+  // Ocupación filtrada: solo alumnos existentes
+  const ocupacion = useMemo(() => {
+    const uids = new Set(alumnos.map(a => a.uid));
+    const cnt = {};
+    rawReservas.forEach(r => {
+      if (!uids.has(r.alumnoId)) return;
+      const k = r.dia + "_" + r.hora.replace(":", "");
+      cnt[k] = (cnt[k] || 0) + 1;
+    });
+    return cnt;
+  }, [rawReservas, alumnos]);
 
   function cupoDisp(dia, hora) {
     return Math.max(0, CUPO - (ocupacion[dia + "_" + hora.replace(":", "")] || 0));
