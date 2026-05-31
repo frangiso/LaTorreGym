@@ -2,6 +2,8 @@ import { exportarBackupExcel } from "../../utils/exportarExcel";
 import { useEffect, useState } from "react";
 import { doc, getDoc, setDoc, getDocs, deleteDoc, collection, query, where, writeBatch } from "firebase/firestore";
 import { db } from "../../firebase";
+import { useData } from "../../context/DataContext";
+import { crearReservasFijas } from "../../reservasFijas";
 
 export default function ConfigGimnasio() {
   const [config, setConfig]               = useState(null);
@@ -199,6 +201,7 @@ function Field({ label, children }) {
 }
 
 function CierreTemporario() {
+  const { alumnos } = useData();
   const [desde, setDesde]             = useState("");
   const [hasta, setHasta]             = useState("");
   const [procesando, setProcesando]   = useState(false);
@@ -253,7 +256,20 @@ function CierreTemporario() {
         aEliminar.forEach(d => b.delete(doc(db, "feriados", d.id)));
         await b.commit();
       }
-      setResultado({ levantado: true, fechas: aEliminar.length });
+
+      // Regenerar turnos fijos de alumnos activos con plan vigente
+      const hoy = new Date().toISOString().split("T")[0];
+      const conFijos = alumnos.filter(a =>
+        a.turnosFijosEstado === "aprobado" &&
+        (a.turnosFijos || []).length > 0 &&
+        a.estado === "activo" &&
+        (!a.fechaVencimiento || (a.fechaVencimiento?.toDate?.() || new Date(a.fechaVencimiento)).toISOString().split("T")[0] >= hoy)
+      );
+      for (const a of conFijos) {
+        await crearReservasFijas(a.uid, (a.nombre + " " + a.apellido).trim(), a.turnosFijos, 4);
+      }
+
+      setResultado({ levantado: true, fechas: aEliminar.length, regenerados: conFijos.length });
       setDesde(""); setHasta("");
     } catch(e) { alert("Error: " + e.message); }
     setProcesando(false);
@@ -268,7 +284,9 @@ function CierreTemporario() {
       {resultado && (
         <div style={{ background: resultado.levantado ? "#dcfce7" : "#fef3c7", border: "1px solid " + (resultado.levantado ? "#86efac" : "#fcd34d"), borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
           <p style={{ fontSize: 13, color: resultado.levantado ? "#065f46" : "#92400e", margin: 0 }}>
-            {resultado.levantado ? "✓ Cierre levantado — " + resultado.fechas + " días liberados." : "✓ " + resultado.fechas + " días bloqueados — " + resultado.canceladas + " reservas canceladas."}
+            {resultado.levantado
+              ? "✓ Cierre levantado — " + resultado.fechas + " días liberados. Turnos fijos regenerados para " + resultado.regenerados + " alumno" + (resultado.regenerados !== 1 ? "s" : "") + "."
+              : "✓ " + resultado.fechas + " días bloqueados — " + resultado.canceladas + " reservas canceladas."}
           </p>
         </div>
       )}
