@@ -346,14 +346,18 @@ export default function PagosPendientes() {
                       style={{background:"#F5C400",color:"#111",border:"none",borderRadius:8,padding:"9px 18px",fontSize:13,fontWeight:500,cursor:"pointer"}}>
                       {procesando===alumno.uid?"Procesando...":"✓ Confirmar pago"}
                     </button>
-                    <button onClick={() => setFamiliarModal(alumno)}
-                      style={{background:"#fffbea",border:"0.5px solid #fcd34d",color:"#92400e",borderRadius:8,padding:"9px 14px",fontSize:13,cursor:"pointer",fontWeight:500}}>
-                      🏅 15% familiar
-                    </button>
-                    <button onClick={() => setDescuentoModal(alumno)}
-                      style={{background:"#fff5f5",border:"0.5px solid #fca5a5",color:"#dc2626",borderRadius:8,padding:"9px 14px",fontSize:13,cursor:"pointer",fontWeight:500}}>
-                      🎁 50% especial
-                    </button>
+                    {alumno.metodoPago === "efectivo" && (
+                      <button onClick={() => setFamiliarModal(alumno)}
+                        style={{background:"#fffbea",border:"0.5px solid #fcd34d",color:"#92400e",borderRadius:8,padding:"9px 14px",fontSize:13,cursor:"pointer",fontWeight:500}}>
+                        🏅 15% familiar
+                      </button>
+                    )}
+                    {alumno.metodoPago === "efectivo" && (
+                      <button onClick={() => setDescuentoModal(alumno)}
+                        style={{background:"#fff5f5",border:"0.5px solid #fca5a5",color:"#dc2626",borderRadius:8,padding:"9px 14px",fontSize:13,cursor:"pointer",fontWeight:500}}>
+                        🎁 50% especial
+                      </button>
+                    )}
                     <button onClick={() => setRechazando(alumno.uid)}
                       style={{background:"transparent",border:"0.5px solid #e0e0e0",borderRadius:8,padding:"9px 14px",fontSize:13,color:"#888",cursor:"pointer"}}>
                       ✗ Rechazar

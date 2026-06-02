@@ -92,12 +92,14 @@ export default function InstructivoPlanes() {
               <div style={{ fontSize: 12, color: "#b45309", lineHeight: 1.5 }}>
                 Si sos papá o mamá de un alumno inscripto en La Torre, tenés un 15% de descuento permanente en tu cuota mensual. Avisale al profe al momento de registrar tu pago.
               </div>
+              <div style={{ fontSize: 11, color: "#dc2626", marginTop: 6, fontWeight: 600 }}>⚠ Solo válido para pagos en efectivo.</div>
             </div>
             <div style={{ background: "#fff", borderRadius: 10, padding: "12px 14px", border: "1px solid #fcd34d" }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "#92400e", marginBottom: 3 }}>⚡ 2x1 este mes para la familia</div>
               <div style={{ fontSize: 12, color: "#b45309", lineHeight: 1.5 }}>
                 Por este mes, si sos papá o mamá de un alumno de La Torre, pagás solo la mitad de la cuota. Preguntale al profe al momento de confirmar tu pago.
               </div>
+              <div style={{ fontSize: 11, color: "#dc2626", marginTop: 6, fontWeight: 600 }}>⚠ Solo válido para pagos en efectivo.</div>
             </div>
           </div>
         </div>
