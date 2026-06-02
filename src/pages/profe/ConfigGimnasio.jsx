@@ -153,6 +153,9 @@ export default function ConfigGimnasio() {
       {/* Cierre temporario */}
       <CierreTemporario />
 
+      {/* Reset de datos */}
+      <ResetDatos />
+
       {/* Backup */}
       <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid #e0e0e0" }}>
         <h3 style={{ fontSize: 15, fontWeight: 500, color: "#111", margin: "0 0 6px" }}>Copia de seguridad</h3>
@@ -310,6 +313,66 @@ function CierreTemporario() {
           🔓 Levantar cierre
         </button>
       </div>
+    </div>
+  );
+}
+
+async function borrarColeccion(nombreCol, filtro = null) {
+  const snap = filtro
+    ? await getDocs(query(collection(db, nombreCol), ...filtro))
+    : await getDocs(collection(db, nombreCol));
+  const lotes = [];
+  for (let i = 0; i < snap.docs.length; i += 500) {
+    const b = writeBatch(db);
+    snap.docs.slice(i, i + 500).forEach(d => b.delete(doc(db, nombreCol, d.id)));
+    lotes.push(b.commit());
+  }
+  await Promise.all(lotes);
+  return snap.docs.length;
+}
+
+function ResetDatos() {
+  const [reseteando, setReseteando] = useState(false);
+  const [resultado, setResultado]   = useState(null);
+
+  async function resetear() {
+    if (!confirm("¿Borrar TODOS los alumnos, reservas y caja? Esto no se puede deshacer.")) return;
+    if (!confirm("Segunda confirmación: se borrarán permanentemente todos los alumnos registrados y sus reservas.")) return;
+    setReseteando(true);
+    setResultado(null);
+    try {
+      const [alumnos, reservas, actividad, notifs, espera, emails] = await Promise.all([
+        borrarColeccion("usuarios", [where("rol", "==", "alumno")]),
+        borrarColeccion("reservas"),
+        borrarColeccion("actividad"),
+        borrarColeccion("notificaciones"),
+        borrarColeccion("listaEspera"),
+        borrarColeccion("emailsLiberados"),
+      ]);
+      setResultado({ alumnos, reservas });
+    } catch(e) {
+      alert("Error durante el reset: " + e.message);
+    }
+    setReseteando(false);
+  }
+
+  return (
+    <div style={{ marginTop: 32, paddingTop: 24, borderTop: "1px solid #e0e0e0", marginBottom: 32 }}>
+      <h3 style={{ fontSize: 15, fontWeight: 500, color: "#dc2626", margin: "0 0 6px" }}>Reset de datos</h3>
+      <p style={{ fontSize: 13, color: "#888", margin: "0 0 16px", lineHeight: 1.5 }}>
+        Borra todos los alumnos registrados, sus reservas y la caja. La configuración del gimnasio y los planes no se tocan.
+      </p>
+      {resultado && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
+          <p style={{ fontSize: 13, color: "#991b1b", margin: 0 }}>
+            ✓ Reset completado — {resultado.alumnos} alumno{resultado.alumnos !== 1 ? "s" : ""} eliminado{resultado.alumnos !== 1 ? "s" : ""}, {resultado.reservas} reserva{resultado.reservas !== 1 ? "s" : ""} borrada{resultado.reservas !== 1 ? "s" : ""}. Caja en $0.
+          </p>
+        </div>
+      )}
+      <button onClick={resetear} disabled={reseteando}
+        style={{ background: reseteando ? "#e0e0e0" : "#dc2626", color: reseteando ? "#aaa" : "#fff", border: "none", borderRadius: 10, padding: "12px 24px", fontSize: 14, fontWeight: 500, cursor: reseteando ? "default" : "pointer" }}>
+        {reseteando ? "Borrando..." : "🗑 Borrar alumnos y caja"}
+      </button>
     </div>
   );
 }
