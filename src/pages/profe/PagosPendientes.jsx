@@ -37,11 +37,12 @@ export default function PagosPendientes() {
     const _h = new Date();
     const vence = new Date(_h.getFullYear(), _h.getMonth() + 1, _h.getDate());
     
-    // Calcular monto con descuentos
+    // Calcular monto con descuentos (solo efectivo)
+    const esEfectivo = alumno.metodoPago === "efectivo";
     let monto = alumno.montoPagado || 0;
-    if (alumno.descuentoFutbol) monto = Math.round(monto * 0.85); // -15%
-    if (descuentoExtra === 15)  monto = Math.round(monto * 0.85); // -15% familiar
-    if (descuentoExtra === 50)  monto = Math.round(monto * 0.5);  // -50%
+    if (esEfectivo && alumno.descuentoFutbol) monto = Math.round(monto * 0.85); // -15%
+    if (esEfectivo && descuentoExtra === 15)  monto = Math.round(monto * 0.85); // -15% familiar
+    if (esEfectivo && descuentoExtra === 50)  monto = Math.round(monto * 0.5);  // -50%
     
     // Agregar inscripción si es primera vez
     const montoFinal = monto + (alumno.inscripcionPagada ? 0 : INSCRIPCION);
@@ -104,8 +105,9 @@ export default function PagosPendientes() {
   }
 
   function calcularMonto(alumno) {
+    const esEfectivo = alumno.metodoPago === "efectivo";
     let m = alumno.montoPagado || 0;
-    if (alumno.descuentoFutbol) m = Math.round(m * 0.85);
+    if (esEfectivo && alumno.descuentoFutbol) m = Math.round(m * 0.85);
     const total = m + (alumno.inscripcionPagada ? 0 : INSCRIPCION);
     return { cuota: m, inscripcion: alumno.inscripcionPagada ? 0 : INSCRIPCION, total };
   }
