@@ -74,8 +74,8 @@ function PendingCard({ alumno, procesando, onConfirmar, onRechazar }) {
           )}
         </div>
 
-        {/* Descuento % (solo efectivo) */}
-        {esEfectivo ? (
+        {/* Descuento % (solo cuando el total es 100% efectivo) */}
+        {(Number(montoTransferencia) || 0) === 0 ? (
           <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
             <label style={{ fontSize:13, color:"#555", flexShrink:0 }}>Descuento %</label>
             <input type="number" value={descuentoPct}
@@ -90,7 +90,7 @@ function PendingCard({ alumno, procesando, onConfirmar, onRechazar }) {
           </div>
         ) : (
           <div style={{ fontSize:12, color:"#aaa", background:"#f9f9f9", borderRadius:8, padding:"6px 10px" }}>
-            Los descuentos solo aplican a pagos en efectivo.
+            Los descuentos solo aplican cuando el pago es 100% en efectivo.
           </div>
         )}
 
@@ -107,7 +107,8 @@ function PendingCard({ alumno, procesando, onConfirmar, onRechazar }) {
             </div>
             <div>
               <label style={{ fontSize:12, color:"#888", display:"block", marginBottom:4 }}>Transferencia $</label>
-              <input type="number" value={montoTransferencia} onChange={e => setMontoTransferencia(e.target.value)}
+              <input type="number" value={montoTransferencia}
+                onChange={e => { setMontoTransferencia(e.target.value); if (Number(e.target.value) > 0) setDescuentoPct(0); }}
                 min={0} placeholder="0" style={inp} />
             </div>
           </div>
