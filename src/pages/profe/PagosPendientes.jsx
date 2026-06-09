@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { doc, updateDoc, serverTimestamp, addDoc, collection, deleteField } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, addDoc, collection, deleteField, runTransaction } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useData } from "../../context/DataContext";
 import { useAuth } from "../../context/AuthContext";
+import { generarReciboHTML, generarCajaHTML } from "../../utils/recibo";
+
+const LOGO_URL = window.location.origin + "/logo.jpg";
 
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const INSCRIPCION_DEFECTO = 15000;
@@ -200,10 +203,48 @@ export default function PagosPendientes() {
     setMesVer(m); setAnioVer(a);
   }
 
+  async function obtenerNroRecibo() {
+    const configRef = doc(db, "config", "gimnasio");
+    let nro = 1;
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(configRef);
+      nro = (snap.data()?.ultimoNroRecibo || 30000) + 1;
+      tx.update(configRef, { ultimoNroRecibo: nro });
+    });
+    return nro;
+  }
+
+  function abrirRecibo(alumno, nro, { montoEfectivo, montoTransferencia, totalFinal }) {
+    const html = generarReciboHTML({
+      nro,
+      nombre:            alumno.nombre,
+      apellido:          alumno.apellido,
+      planNombre:        alumno.planNombre,
+      montoEfectivo:     montoEfectivo || 0,
+      montoTransferencia: montoTransferencia || 0,
+      total:             totalFinal,
+      fecha:             new Date(),
+      logoUrl:           LOGO_URL,
+    });
+    const win = window.open("", "_blank");
+    win.document.write(html);
+    win.document.close();
+  }
+
+  function imprimirCaja() {
+    const titulo = `Caja ${MESES[mesVer]} ${anioVer}`;
+    const html = generarCajaHTML({ pagos: pagosDelMes, titulo, logoUrl: LOGO_URL });
+    const win = window.open("", "_blank");
+    win.document.write(html);
+    win.document.close();
+  }
+
   async function confirmar(alumno, { montoEfectivo, montoTransferencia, totalFinal, descuentoPct, cobrarInscripcion, montoInscripcion }) {
     setProcesando(alumno.uid);
     const _h = new Date();
     const vence = new Date(_h.getFullYear(), _h.getMonth() + 1, _h.getDate());
+
+    const nroRecibo = await obtenerNroRecibo();
 
     await updateDoc(doc(db, "usuarios", alumno.uid), {
       estado:             "activo",
@@ -213,6 +254,7 @@ export default function PagosPendientes() {
       montoPagado:        totalFinal,
       montoEfectivo,
       montoTransferencia,
+      nroRecibo,
       inscripcionPagada:  cobrarInscripcion ? true : (alumno.inscripcionPagada || false),
       ...(descuentoPct > 0 ? { descuentoAplicado: `${descuentoPct}% de descuento` } : { descuentoAplicado: deleteField() }),
     });
@@ -222,9 +264,10 @@ export default function PagosPendientes() {
     await registrarActividad(
       miPerfil?.uid || "", miNombre.trim(),
       "pago_confirmado",
-      `Pago confirmado: ${alumno.nombre} ${alumno.apellido} — $${totalFinal.toLocaleString("es-AR")}${desc}${insc}`
+      `Pago confirmado: ${alumno.nombre} ${alumno.apellido} — $${totalFinal.toLocaleString("es-AR")}${desc}${insc} — Recibo #${nroRecibo}`
     );
 
+    abrirRecibo(alumno, nroRecibo, { montoEfectivo, montoTransferencia, totalFinal });
     setProcesando(null);
   }
 
@@ -318,7 +361,11 @@ export default function PagosPendientes() {
       <div style={{ marginBottom:32 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:16, flexWrap:"wrap", gap:10 }}>
           <h2 style={{ fontSize:18, fontWeight:500, margin:0 }}>Caja del mes</h2>
-          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+          <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+            <button onClick={imprimirCaja} disabled={pagosDelMes.length === 0}
+              style={{ background:"#fff", border:"0.5px solid #e0e0e0", borderRadius:8, padding:"6px 14px", fontSize:13, cursor: pagosDelMes.length > 0 ? "pointer" : "not-allowed", color: pagosDelMes.length > 0 ? "#111" : "#bbb" }}>
+              🖨 Imprimir caja
+            </button>
             <button onClick={() => cambiarMes(-1)} style={{ background:"#fff", border:"0.5px solid #e0e0e0", borderRadius:8, padding:"6px 12px", cursor:"pointer" }}>←</button>
             <span style={{ fontSize:14, fontWeight:500, color:"#111", minWidth:130, textAlign:"center" }}>{MESES[mesVer]} {anioVer}</span>
             <button onClick={() => cambiarMes(1)}  style={{ background:"#fff", border:"0.5px solid #e0e0e0", borderRadius:8, padding:"6px 12px", cursor:"pointer" }}>→</button>
@@ -381,7 +428,14 @@ export default function PagosPendientes() {
                       </div>
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
+                      {a.nroRecibo && <span style={{ fontSize:11, color:"#aaa" }}>#{a.nroRecibo}</span>}
                       <span style={{ fontSize:14, fontWeight:500, color:"#111" }}>${(a.montoPagado||0).toLocaleString("es-AR")}</span>
+                      <button
+                        onClick={() => abrirRecibo(a, a.nroRecibo || "—", { montoEfectivo: ef, montoTransferencia: tr, totalFinal: a.montoPagado || 0 })}
+                        title="Reimprimir recibo"
+                        style={{ background:"transparent", border:"0.5px solid #e0e0e0", borderRadius:6, padding:"4px 8px", fontSize:12, color:"#888", cursor:"pointer" }}>
+                        🖨
+                      </button>
                       <button
                         onClick={() => setEditModal({ alumno: a, montoEfectivo: ef, montoTransferencia: tr })}
                         title="Editar pago"
