@@ -21,9 +21,10 @@ function PendingCard({ alumno, procesando, onConfirmar, onRechazar }) {
   const esEfectivo = alumno.metodoPago === "efectivo";
   const precioBase = alumno.montoPagado || 0;
 
-  const [cobrarInscripcion, setCobrarInscripcion] = useState(!alumno.inscripcionPagada);
-  const [montoInscripcion,  setMontoInscripcion]  = useState(INSCRIPCION_DEFECTO);
-  const [descuentoPct,      setDescuentoPct]       = useState(esEfectivo && alumno.descuentoFutbol ? 15 : 0);
+  const [cobrarInscripcion,  setCobrarInscripcion]  = useState(!alumno.inscripcionPagada);
+  const [montoInscripcion,   setMontoInscripcion]   = useState(INSCRIPCION_DEFECTO);
+  const [inscripcionMetodo,  setInscripcionMetodo]  = useState("efectivo");
+  const [descuentoPct,       setDescuentoPct]        = useState(esEfectivo && alumno.descuentoFutbol ? 15 : 0);
 
   const cuotaConDesc  = esEfectivo && descuentoPct > 0 ? Math.round(precioBase * (1 - descuentoPct / 100)) : precioBase;
   const inscMonto     = cobrarInscripcion ? (Number(montoInscripcion) || 0) : 0;
@@ -31,7 +32,11 @@ function PendingCard({ alumno, procesando, onConfirmar, onRechazar }) {
 
   const [montoEfectivo,      setMontoEfectivo]      = useState(() => esEfectivo ? precioBase : 0);
   const [montoTransferencia, setMontoTransferencia] = useState(() => !esEfectivo ? precioBase : 0);
-  const totalFinal = (Number(montoEfectivo) || 0) + (Number(montoTransferencia) || 0) + inscMonto;
+
+  // Totales incorporando método de inscripción
+  const efTotal  = (Number(montoEfectivo)      || 0) + (cobrarInscripcion && inscripcionMetodo === "efectivo"      ? inscMonto : 0);
+  const trTotal  = (Number(montoTransferencia) || 0) + (cobrarInscripcion && inscripcionMetodo === "transferencia" ? inscMonto : 0);
+  const totalFinal = efTotal + trTotal;
 
   const [rechazando,    setRechazando]    = useState(false);
   const [motivoRechazo, setMotivoRechazo] = useState("");
@@ -63,17 +68,32 @@ function PendingCard({ alumno, procesando, onConfirmar, onRechazar }) {
       <div style={{ marginTop:14, display:"flex", flexDirection:"column", gap:10 }}>
 
         {/* Inscripción */}
-        <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-          <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:13, color:"#555", flexShrink:0 }}>
-            <input type="checkbox" checked={cobrarInscripcion} onChange={e => setCobrarInscripcion(e.target.checked)}
-              style={{ width:15, height:15, accentColor:"#F5C400" }} />
-            Inscripción $
-          </label>
-          <input type="number" value={montoInscripcion} onChange={e => setMontoInscripcion(e.target.value)}
-            disabled={!cobrarInscripcion} min={0} placeholder="15000"
-            style={{ ...inp, width:110, opacity: cobrarInscripcion ? 1 : 0.4 }} />
-          {alumno.inscripcionPagada && (
-            <span style={{ fontSize:11, color:"#10b981" }}>ya abonada</span>
+        <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+            <label style={{ display:"flex", alignItems:"center", gap:6, cursor:"pointer", fontSize:13, color:"#555", flexShrink:0 }}>
+              <input type="checkbox" checked={cobrarInscripcion} onChange={e => setCobrarInscripcion(e.target.checked)}
+                style={{ width:15, height:15, accentColor:"#F5C400" }} />
+              Inscripción $
+            </label>
+            <input type="number" value={montoInscripcion} onChange={e => setMontoInscripcion(e.target.value)}
+              disabled={!cobrarInscripcion} min={0} placeholder="15000"
+              style={{ ...inp, width:110, opacity: cobrarInscripcion ? 1 : 0.4 }} />
+            {alumno.inscripcionPagada && (
+              <span style={{ fontSize:11, color:"#10b981" }}>ya abonada</span>
+            )}
+          </div>
+          {cobrarInscripcion && (
+            <div style={{ display:"flex", gap:6, paddingLeft:22 }}>
+              {["efectivo","transferencia"].map(m => (
+                <button key={m} type="button" onClick={() => setInscripcionMetodo(m)}
+                  style={{ padding:"4px 12px", borderRadius:20, fontSize:12, cursor:"pointer", fontWeight: inscripcionMetodo===m ? 600 : 400,
+                    background: inscripcionMetodo===m ? "#F5C400" : "transparent",
+                    border: inscripcionMetodo===m ? "none" : "0.5px solid #e0e0e0",
+                    color: inscripcionMetodo===m ? "#111" : "#888" }}>
+                  {m.charAt(0).toUpperCase()+m.slice(1)}
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
@@ -151,8 +171,8 @@ function PendingCard({ alumno, procesando, onConfirmar, onRechazar }) {
         <div style={{ marginTop:12, display:"flex", gap:8, flexWrap:"wrap" }}>
           <button
             onClick={() => onConfirmar(alumno, {
-              montoEfectivo:      Number(montoEfectivo) || 0,
-              montoTransferencia: Number(montoTransferencia) || 0,
+              montoEfectivo:      efTotal,
+              montoTransferencia: trTotal,
               totalFinal,
               descuentoPct,
               cobrarInscripcion,
@@ -443,8 +463,8 @@ export default function PagosPendientes() {
                         ✏️
                       </button>
                       <button
-                        onDoubleClick={() => eliminarPago(a)}
-                        title="Doble click para eliminar"
+                        onClick={() => { if (window.confirm(`¿Eliminar el pago de ${a.nombre} ${a.apellido}? El alumno pasará a inactivo.`)) eliminarPago(a); }}
+                        title="Eliminar pago"
                         style={{ background:"transparent", border:"0.5px solid #fca5a5", borderRadius:6, padding:"4px 8px", fontSize:12, color:"#dc2626", cursor:"pointer" }}>
                         🗑
                       </button>
@@ -453,7 +473,7 @@ export default function PagosPendientes() {
                 );
               })}
             <div style={{ padding:"8px 16px", fontSize:11, color:"#bbb", borderTop:"0.5px solid #f0f0f0" }}>
-              Para eliminar un pago: doble click en 🗑
+              Eliminar pago: click en 🗑 y confirmar
             </div>
           </div>
         ) : (
