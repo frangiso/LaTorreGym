@@ -261,8 +261,14 @@ export default function PagosPendientes() {
 
   async function confirmar(alumno, { montoEfectivo, montoTransferencia, totalFinal, descuentoPct, cobrarInscripcion, montoInscripcion }) {
     setProcesando(alumno.uid);
-    const _h = new Date();
-    const vence = new Date(_h.getFullYear(), _h.getMonth() + 1, _h.getDate());
+    const hoy = new Date();
+    const vencAnterior = alumno.fechaVencimiento
+      ? new Date(alumno.fechaVencimiento.toDate?.() || alumno.fechaVencimiento)
+      : null;
+    // Si paga antes de que venza el plan, se suma el mes al vencimiento actual (no a hoy)
+    // para que no pierda los días restantes y mantenga siempre el mismo día de corte.
+    const base = vencAnterior && vencAnterior > hoy ? vencAnterior : hoy;
+    const vence = new Date(base.getFullYear(), base.getMonth() + 1, base.getDate());
 
     const nroRecibo = await obtenerNroRecibo();
 

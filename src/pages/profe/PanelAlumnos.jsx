@@ -147,8 +147,12 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
     setGuardando(true);
     try {
       const plan = planes.find(p => p.id === form.planId);
-      const _h = new Date();
-      const vence = new Date(_h.getFullYear(), _h.getMonth() + 1, _h.getDate());
+      const hoy = new Date();
+      const vencAnterior = a.fechaVencimiento
+        ? new Date(a.fechaVencimiento.toDate?.() || a.fechaVencimiento)
+        : null;
+      const base = vencAnterior && vencAnterior > hoy ? vencAnterior : hoy;
+      const vence = new Date(base.getFullYear(), base.getMonth() + 1, base.getDate());
 
       const updates = {
         nombre:             form.nombre,
@@ -244,8 +248,15 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
           onClick={() => setModalRenovar(false)}>
           <div style={{ background: "#fff", borderRadius: 16, padding: "24px 20px", maxWidth: 360, width: "100%" }}
             onClick={e => e.stopPropagation()}>
-            <h3 style={{ fontSize: 16, fontWeight: 500, margin: "0 0 4px" }}>Renovar plan</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 500, margin: "0 0 4px" }}>
+              {a.estado === "activo" ? "Registrar pago" : "Renovar plan"}
+            </h3>
             <p style={{ fontSize: 13, color: "#888", margin: "0 0 16px" }}>{a.nombre} {a.apellido} · {a.planNombre}</p>
+            {a.estado === "activo" && vence && (
+              <p style={{ fontSize: 12, color: "#888", margin: "0 0 16px", background: "#f9f9f9", borderRadius: 8, padding: "8px 12px" }}>
+                Plan vigente hasta el <strong>{vence}</strong>. Al confirmar el pago se suma un mes a partir de esa fecha (no se pierden los días restantes).
+              </p>
+            )}
             <p style={{ fontSize: 12, fontWeight: 500, color: "#555", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Método de pago</p>
             <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
               {["efectivo", "transferencia"].map(m => (
@@ -266,7 +277,7 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={renovar} disabled={guardando}
                 style={{ flex: 1, background: "#F5C400", color: "#111", border: "none", borderRadius: 8, padding: "11px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-                {guardando ? "Procesando..." : "Confirmar renovación"}
+                {guardando ? "Procesando..." : a.estado === "activo" ? "Registrar pago" : "Confirmar renovación"}
               </button>
               <button onClick={() => setModalRenovar(false)}
                 style={{ background: "transparent", border: "0.5px solid #e0e0e0", borderRadius: 8, padding: "11px 14px", fontSize: 13, color: "#888", cursor: "pointer" }}>
@@ -294,10 +305,10 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
         <span style={{ background: colors.bg, color: colors.color, fontSize: 11, fontWeight: 500, padding: "3px 10px", borderRadius: 20, flexShrink: 0 }}>
           {ESTADO_LABEL[a.estado] || a.estado}
         </span>
-        {(a.estado === "inactivo" || a.estado === "suspendido") && a.planId && (
+        {a.planId && a.estado !== "pago_pendiente" && a.estado !== "pendiente" && (
           <button onClick={e => { e.stopPropagation(); setMetodoRenovar("efectivo"); setModalRenovar(true); }}
             style={{ background: "#F5C400", color: "#111", border: "none", borderRadius: 7, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
-            Renovar
+            {a.estado === "activo" ? "Registrar pago" : "Renovar"}
           </button>
         )}
         <span style={{ color: "#aaa", fontSize: 12 }}>{editando ? "▲" : "✏️"}</span>
