@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { doc, updateDoc, deleteDoc, serverTimestamp, addDoc, collection, deleteField, runTransaction, query, where, getDocs } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, addDoc, collection, deleteField, runTransaction, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useData } from "../../context/DataContext";
 import { useAuth } from "../../context/AuthContext";
@@ -232,9 +232,10 @@ export default function PagosPendientes() {
     return () => { vigente = false; };
   }, [mesVer, anioVer]);
 
-  const totalEfectivo      = pagosDelMes.reduce((s, p) => s + (p.montoEfectivo || 0), 0);
-  const totalTransferencia = pagosDelMes.reduce((s, p) => s + (p.montoTransferencia || 0), 0);
+  const totalEfectivo      = pagosDelMes.reduce((s, p) => s + (p.anulado ? 0 : (p.montoEfectivo || 0)), 0);
+  const totalTransferencia = pagosDelMes.reduce((s, p) => s + (p.anulado ? 0 : (p.montoTransferencia || 0)), 0);
   const totalGeneral       = totalEfectivo + totalTransferencia;
+  const pagosConfirmados   = pagosDelMes.filter(p => !p.anulado).length;
 
   function cambiarMes(dir) {
     let m = mesVer + dir, a = anioVer;
@@ -383,12 +384,19 @@ export default function PagosPendientes() {
     setEditGuardando(false);
   }
 
-  async function eliminarPago(pago) {
-    await deleteDoc(doc(db, "pagos", pago.id));
+  async function anularPago(pago) {
+    // No se borra el registro: se marca como anulado para que quede
+    // constancia de que existió y se dejó sin efecto (por si se equivocan).
+    await updateDoc(doc(db, "pagos", pago.id), {
+      anulado:          true,
+      anuladoEn:        serverTimestamp(),
+      anuladoPorUid:    miPerfil?.uid || null,
+      anuladoPorNombre: miNombre.trim(),
+    });
 
-    // Solo se desactiva al alumno si el pago borrado es el que lo tiene activo
+    // Solo se desactiva al alumno si el pago anulado es el que lo tiene activo
     // hoy. Si es un pago viejo ya reemplazado por una renovación posterior,
-    // se borra el registro histórico nada más y no se toca su estado actual.
+    // se anula el registro histórico nada más y no se toca su estado actual.
     const alumnoActual = todosAlumnos.find(al => al.uid === pago.alumnoUid);
     const esPagoVigente = alumnoActual && pago.nroRecibo && alumnoActual.nroRecibo === pago.nroRecibo;
     if (esPagoVigente) {
@@ -402,11 +410,11 @@ export default function PagosPendientes() {
       });
     }
 
-    setPagosDelMes(prev => prev.filter(p => p.id !== pago.id));
+    setPagosDelMes(prev => prev.map(p => p.id === pago.id ? { ...p, anulado: true } : p));
 
     await registrarActividad(
-      miPerfil?.uid || "", miNombre.trim(), "pago_eliminado",
-      `Pago eliminado: ${pago.alumnoNombre} ${pago.alumnoApellido}${esPagoVigente ? " (el alumno pasó a inactivo)" : ""}`
+      miPerfil?.uid || "", miNombre.trim(), "pago_anulado",
+      `Pago anulado: ${pago.alumnoNombre} ${pago.alumnoApellido} — $${(pago.montoTotal||0).toLocaleString("es-AR")}${esPagoVigente ? " (el alumno pasó a inactivo)" : ""}`
     );
   }
 
@@ -476,7 +484,7 @@ export default function PagosPendientes() {
             ${totalGeneral.toLocaleString("es-AR")}
           </div>
           <div style={{ fontSize:13, color:"#666", marginTop:4 }}>
-            {pagosDelMes.length} pago{pagosDelMes.length !== 1 ? "s" : ""} confirmado{pagosDelMes.length !== 1 ? "s" : ""}
+            {pagosConfirmados} pago{pagosConfirmados !== 1 ? "s" : ""} confirmado{pagosConfirmados !== 1 ? "s" : ""}
           </div>
         </div>
 
@@ -503,17 +511,20 @@ export default function PagosPendientes() {
                 const alumnoActual = todosAlumnos.find(al => al.uid === p.alumnoUid);
                 const esPagoVigente = alumnoActual && p.nroRecibo && alumnoActual.nroRecibo === p.nroRecibo;
                 return (
-                  <div key={p.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 16px", gap:12, borderBottom: i < pagosDelMes.length-1 ? "0.5px solid #f5f5f5" : "none", background: i%2===0 ? "#fff" : "#fafafa" }}>
+                  <div key={p.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 16px", gap:12, borderBottom: i < pagosDelMes.length-1 ? "0.5px solid #f5f5f5" : "none", background: p.anulado ? "#fef2f2" : (i%2===0 ? "#fff" : "#fafafa"), opacity: p.anulado ? 0.7 : 1 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:10, flex:1, minWidth:0 }}>
                       <div style={{ width:30, height:30, borderRadius:"50%", background:"#F5C400", color:"#111", fontSize:11, fontWeight:500, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                         {(p.alumnoNombre||"?").charAt(0).toUpperCase()}
                       </div>
                       <div style={{ minWidth:0 }}>
-                        <div style={{ fontSize:13, fontWeight:500, color:"#111", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.alumnoNombre} {p.alumnoApellido}</div>
+                        <div style={{ fontSize:13, fontWeight:500, color:"#111", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", textDecoration: p.anulado ? "line-through" : "none" }}>
+                          {p.alumnoNombre} {p.alumnoApellido}
+                          {p.anulado && <span style={{ marginLeft:6, fontSize:11, fontWeight:700, color:"#dc2626", textDecoration:"none" }}>ANULADO</span>}
+                        </div>
                         <div style={{ fontSize:11, color:"#aaa" }}>
                           {p.planNombre} · {fecha.toLocaleDateString("es-AR")}
                           {p.descuentoAplicado && <span style={{ color:"#10b981", marginLeft:4 }}>· {p.descuentoAplicado}</span>}
-                          {!esPagoVigente && <span style={{ marginLeft:4 }}>· pago anterior</span>}
+                          {!esPagoVigente && !p.anulado && <span style={{ marginLeft:4 }}>· pago anterior</span>}
                         </div>
                         {(ef > 0 || tr > 0) && (
                           <div style={{ fontSize:11, color:"#aaa", marginTop:1 }}>
@@ -526,36 +537,40 @@ export default function PagosPendientes() {
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
                       {p.nroRecibo && <span style={{ fontSize:11, color:"#aaa" }}>#{p.nroRecibo}</span>}
-                      <span style={{ fontSize:14, fontWeight:500, color:"#111" }}>${(p.montoTotal||0).toLocaleString("es-AR")}</span>
+                      <span style={{ fontSize:14, fontWeight:500, color:"#111", textDecoration: p.anulado ? "line-through" : "none" }}>${(p.montoTotal||0).toLocaleString("es-AR")}</span>
                       <button
                         onClick={() => abrirRecibo({ nombre: p.alumnoNombre, apellido: p.alumnoApellido, planNombre: p.planNombre }, p.nroRecibo || "—", { montoEfectivo: ef, montoTransferencia: tr, totalFinal: p.montoTotal || 0 })}
                         title="Reimprimir recibo"
                         style={{ background:"transparent", border:"0.5px solid #e0e0e0", borderRadius:6, padding:"4px 8px", fontSize:12, color:"#888", cursor:"pointer" }}>
                         🖨
                       </button>
-                      <button
-                        onClick={() => setEditModal({ pago: p, montoEfectivo: ef, montoTransferencia: tr })}
-                        title="Editar pago"
-                        style={{ background:"transparent", border:"0.5px solid #e0e0e0", borderRadius:6, padding:"4px 8px", fontSize:12, color:"#888", cursor:"pointer" }}>
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => {
-                          const aviso = esPagoVigente
-                            ? `¿Eliminar el pago de ${p.alumnoNombre} ${p.alumnoApellido}? El alumno pasará a inactivo.`
-                            : `¿Eliminar este pago anterior de ${p.alumnoNombre} ${p.alumnoApellido}? Es un pago viejo, no afecta su estado actual.`;
-                          if (window.confirm(aviso)) eliminarPago(p);
-                        }}
-                        title="Eliminar pago"
-                        style={{ background:"transparent", border:"0.5px solid #fca5a5", borderRadius:6, padding:"4px 8px", fontSize:12, color:"#dc2626", cursor:"pointer" }}>
-                        🗑
-                      </button>
+                      {!p.anulado && (
+                        <>
+                          <button
+                            onClick={() => setEditModal({ pago: p, montoEfectivo: ef, montoTransferencia: tr })}
+                            title="Editar pago"
+                            style={{ background:"transparent", border:"0.5px solid #e0e0e0", borderRadius:6, padding:"4px 8px", fontSize:12, color:"#888", cursor:"pointer" }}>
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => {
+                              const aviso = esPagoVigente
+                                ? `¿Anular el pago de ${p.alumnoNombre} ${p.alumnoApellido}? El alumno pasará a inactivo. Va a quedar registrado como anulado, no se borra.`
+                                : `¿Anular este pago anterior de ${p.alumnoNombre} ${p.alumnoApellido}? Es un pago viejo, no afecta su estado actual. Va a quedar registrado como anulado, no se borra.`;
+                              if (window.confirm(aviso)) anularPago(p);
+                            }}
+                            title="Anular pago"
+                            style={{ background:"transparent", border:"0.5px solid #fca5a5", borderRadius:6, padding:"4px 8px", fontSize:12, color:"#dc2626", cursor:"pointer" }}>
+                            🚫
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
               })}
             <div style={{ padding:"8px 16px", fontSize:11, color:"#bbb", borderTop:"0.5px solid #f0f0f0" }}>
-              Eliminar pago: click en 🗑 y confirmar
+              Anular pago: click en 🚫 y confirmar. Queda registrado como anulado, no se borra.
             </div>
           </div>
         ) : (

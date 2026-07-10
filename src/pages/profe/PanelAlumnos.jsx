@@ -529,11 +529,12 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
                     {pagos.map(p => {
                       const fecha = p.fechaPago?.toDate?.() || new Date(p.fechaPago);
                       return (
-                        <div key={p.id} style={{ background: "#f9f9f9", borderRadius: 10, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                        <div key={p.id} style={{ background: p.anulado ? "#fef2f2" : "#f9f9f9", borderRadius: 10, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, opacity: p.anulado ? 0.7 : 1 }}>
                           <div>
                             <div style={{ fontSize: 13, fontWeight: 500, color: "#111" }}>
                               {fecha.toLocaleDateString("es-AR")}
                               {p.nroRecibo ? ` · Recibo #${p.nroRecibo}` : ""}
+                              {p.anulado && <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: "#dc2626" }}>ANULADO</span>}
                             </div>
                             <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
                               {p.planNombre || "Sin plan"}
@@ -546,7 +547,7 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
                               {(p.montoTransferencia || 0) > 0 && <span>Transf. ${p.montoTransferencia.toLocaleString("es-AR")}</span>}
                             </div>
                           </div>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: "#111" }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "#111", textDecoration: p.anulado ? "line-through" : "none" }}>
                             ${(p.montoTotal || 0).toLocaleString("es-AR")}
                           </div>
                         </div>

@@ -146,8 +146,8 @@ export function generarReciboHTML({ nro, nombre, apellido, planNombre, montoEfec
 
 /* ── HTML de caja del día/mes para imprimir ── */
 export function generarCajaHTML({ pagos, titulo, logoUrl }) {
-  const totalEf = pagos.reduce((s, p) => s + (p.montoEfectivo || 0), 0);
-  const totalTr = pagos.reduce((s, p) => s + (p.montoTransferencia || 0), 0);
+  const totalEf = pagos.reduce((s, p) => s + (p.anulado ? 0 : (p.montoEfectivo || 0)), 0);
+  const totalTr = pagos.reduce((s, p) => s + (p.anulado ? 0 : (p.montoTransferencia || 0)), 0);
   const total   = totalEf + totalTr;
 
   const filas = pagos
@@ -157,9 +157,13 @@ export function generarCajaHTML({ pagos, titulo, logoUrl }) {
       const ef = p.montoEfectivo || 0;
       const tr = p.montoTransferencia || 0;
       const fecha = new Date(p.fechaPago?.toDate?.() || p.fechaPago).toLocaleDateString("es-AR");
-      return `<tr>
+      const nombreCelda = p.anulado
+        ? `${p.alumnoNombre} ${p.alumnoApellido} <strong style="color:#dc2626;">(ANULADO)</strong>`
+        : `${p.alumnoNombre} ${p.alumnoApellido}`;
+      const estiloFila = p.anulado ? ' style="opacity:0.55; text-decoration:line-through;"' : "";
+      return `<tr${estiloFila}>
         <td>${fecha}</td>
-        <td>${p.alumnoNombre} ${p.alumnoApellido}</td>
+        <td>${nombreCelda}</td>
         <td>${p.planNombre || "—"}</td>
         <td class="num">${ef > 0 ? "$" + ef.toLocaleString("es-AR") : "—"}</td>
         <td class="num">${tr > 0 ? "$" + tr.toLocaleString("es-AR") : "—"}</td>
