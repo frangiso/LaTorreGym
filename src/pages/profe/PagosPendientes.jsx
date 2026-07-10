@@ -272,6 +272,8 @@ export default function PagosPendientes() {
 
     const nroRecibo = await obtenerNroRecibo();
 
+    const descuentoAplicado = descuentoPct > 0 ? `${descuentoPct}% de descuento` : null;
+
     await updateDoc(doc(db, "usuarios", alumno.uid), {
       estado:             "activo",
       fechaActivacion:    serverTimestamp(),
@@ -282,7 +284,28 @@ export default function PagosPendientes() {
       montoTransferencia,
       nroRecibo,
       inscripcionPagada:  cobrarInscripcion ? true : (alumno.inscripcionPagada || false),
-      ...(descuentoPct > 0 ? { descuentoAplicado: `${descuentoPct}% de descuento` } : { descuentoAplicado: deleteField() }),
+      ...(descuentoPct > 0 ? { descuentoAplicado } : { descuentoAplicado: deleteField() }),
+    });
+
+    // Registro permanente del pago: no se pisa con la próxima renovación,
+    // es la fuente para el historial por alumno y para la caja de meses pasados.
+    await addDoc(collection(db, "pagos"), {
+      alumnoUid:          alumno.uid,
+      alumnoNombre:       alumno.nombre || "",
+      alumnoApellido:     alumno.apellido || "",
+      planId:             alumno.planId || null,
+      planNombre:         alumno.planNombre || null,
+      montoEfectivo,
+      montoTransferencia,
+      montoTotal:         totalFinal,
+      descuentoAplicado,
+      inscripcionCobrada: !!cobrarInscripcion,
+      montoInscripcion:   cobrarInscripcion ? (Number(montoInscripcion) || 0) : 0,
+      nroRecibo,
+      fechaVencimientoResultante: vence,
+      fechaPago:          serverTimestamp(),
+      confirmadoPorUid:   miPerfil?.uid || null,
+      confirmadoPorNombre: miNombre.trim(),
     });
 
     const desc = descuentoPct > 0 ? ` (-${descuentoPct}%)` : "";

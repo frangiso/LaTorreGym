@@ -153,6 +153,9 @@ export default function ConfigGimnasio() {
       {/* Cierre temporario */}
       <CierreTemporario />
 
+      {/* Migración de historial de pagos */}
+      <MigrarHistorialPagos />
+
       {/* Reset de datos */}
       <ResetDatos />
 
@@ -313,6 +316,75 @@ function CierreTemporario() {
           🔓 Levantar cierre
         </button>
       </div>
+    </div>
+  );
+}
+
+function MigrarHistorialPagos() {
+  const [migrando, setMigrando] = useState(false);
+  const [resultado, setResultado] = useState(null);
+
+  async function migrar() {
+    setMigrando(true);
+    setResultado(null);
+    try {
+      const snapAlumnos = await getDocs(query(collection(db, "usuarios"), where("rol", "==", "alumno")));
+      let creados = 0, saltados = 0;
+      for (const d of snapAlumnos.docs) {
+        const al = d.data();
+        if (!al.fechaActivacion || !al.montoPagado) continue;
+        // Idempotente: si el alumno ya tiene algún pago en el historial, no se migra de nuevo.
+        const yaExiste = await getDocs(query(collection(db, "pagos"), where("alumnoUid", "==", d.id)));
+        if (!yaExiste.empty) { saltados++; continue; }
+        await addDoc(collection(db, "pagos"), {
+          alumnoUid:           d.id,
+          alumnoNombre:        al.nombre || "",
+          alumnoApellido:      al.apellido || "",
+          planId:              al.planId || null,
+          planNombre:          al.planNombre || null,
+          montoEfectivo:       al.montoEfectivo ?? (al.metodoPago === "efectivo" ? al.montoPagado : 0),
+          montoTransferencia:  al.montoTransferencia ?? (al.metodoPago === "transferencia" ? al.montoPagado : 0),
+          montoTotal:          al.montoPagado,
+          descuentoAplicado:   al.descuentoAplicado || null,
+          inscripcionCobrada:  !!al.inscripcionPagada,
+          montoInscripcion:    0,
+          nroRecibo:           al.nroRecibo || null,
+          fechaVencimientoResultante: al.fechaVencimiento || null,
+          fechaPago:           al.fechaActivacion,
+          confirmadoPorUid:    null,
+          confirmadoPorNombre: "Migración automática",
+          migrado:             true,
+        });
+        creados++;
+      }
+      setResultado({ creados, saltados });
+    } catch(e) {
+      alert("Error al migrar: " + e.message);
+    }
+    setMigrando(false);
+  }
+
+  return (
+    <div style={{ paddingTop: 24, borderTop: "1px solid #e0e0e0", marginBottom: 32 }}>
+      <h3 style={{ fontSize: 15, fontWeight: 500, color: "#111", margin: "0 0 6px" }}>Migrar historial de pagos</h3>
+      <p style={{ fontSize: 13, color: "#888", margin: "0 0 16px", lineHeight: 1.5 }}>
+        Copia el último pago registrado de cada alumno al nuevo historial de pagos, para que no se pierda.
+        Es seguro apretarlo más de una vez: a los alumnos que ya tengan algún pago migrado no se les vuelve a crear.
+      </p>
+      {resultado && (
+        <div style={{ background: "#dcfce7", border: "1px solid #86efac", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
+          <p style={{ fontSize: 13, color: "#065f46", margin: 0 }}>
+            ✓ {resultado.creados} pago{resultado.creados !== 1 ? "s" : ""} migrado{resultado.creados !== 1 ? "s" : ""}
+            {resultado.saltados > 0 ? ` — ${resultado.saltados} ya tenían historial y se saltearon` : ""}.
+          </p>
+        </div>
+      )}
+      <button onClick={migrar} disabled={migrando}
+        style={{ background: migrando ? "#e0e0e0" : "#F5C400", color: migrando ? "#aaa" : "#111",
+          border: "none", borderRadius: 10, padding: "12px 24px", fontSize: 14, fontWeight: 500,
+          cursor: migrando ? "default" : "pointer" }}>
+        {migrando ? "Migrando..." : "📋 Migrar pagos existentes"}
+      </button>
     </div>
   );
 }

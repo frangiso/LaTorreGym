@@ -107,6 +107,24 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
   const [ok, setOk]                     = useState(false);
   const [modalRenovar, setModalRenovar] = useState(false);
   const [metodoRenovar, setMetodoRenovar] = useState("efectivo");
+  const [pagos, setPagos] = useState([]);
+  const [cargandoPagos, setCargandoPagos] = useState(false);
+
+  useEffect(() => {
+    if (tab !== "historial" || !editando) return;
+    setCargandoPagos(true);
+    getDocs(query(collection(db, "pagos"), where("alumnoUid", "==", a.uid)))
+      .then(snap => {
+        const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        lista.sort((x, y) => {
+          const fx = x.fechaPago?.toDate?.() || new Date(x.fechaPago || 0);
+          const fy = y.fechaPago?.toDate?.() || new Date(y.fechaPago || 0);
+          return fy - fx;
+        });
+        setPagos(lista);
+      })
+      .finally(() => setCargandoPagos(false));
+  }, [tab, editando, a.uid]);
 
   function handleChange(e) {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }));
@@ -320,7 +338,7 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
 
           {/* Tabs internos */}
           <div style={{ display: "flex", borderBottom: "0.5px solid #f0f0f0" }}>
-            {[["datos","Datos"], ["turnos","Turnos fijos"]].map(([k, l]) => (
+            {[["datos","Datos"], ["turnos","Turnos fijos"], ["historial","Historial de pagos"]].map(([k, l]) => (
               <button key={k} onClick={() => setTab(k)}
                 style={{
                   background: "transparent", border: "none",
@@ -492,6 +510,48 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
                         {t.dia.slice(0,3)} {t.hora}
                       </span>
                     ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* TAB HISTORIAL DE PAGOS */}
+            {tab === "historial" && (
+              <>
+                {cargandoPagos ? (
+                  <p style={{ color: "#aaa", fontSize: 13, textAlign: "center", padding: "20px 0" }}>Cargando historial...</p>
+                ) : pagos.length === 0 ? (
+                  <p style={{ color: "#aaa", fontSize: 13, textAlign: "center", padding: "20px 0" }}>
+                    Todavía no hay pagos registrados para este alumno.
+                  </p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {pagos.map(p => {
+                      const fecha = p.fechaPago?.toDate?.() || new Date(p.fechaPago);
+                      return (
+                        <div key={p.id} style={{ background: "#f9f9f9", borderRadius: 10, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 500, color: "#111" }}>
+                              {fecha.toLocaleDateString("es-AR")}
+                              {p.nroRecibo ? ` · Recibo #${p.nroRecibo}` : ""}
+                            </div>
+                            <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
+                              {p.planNombre || "Sin plan"}
+                              {p.descuentoAplicado ? ` · ${p.descuentoAplicado}` : ""}
+                              {p.inscripcionCobrada ? ` · + inscripción $${(p.montoInscripcion || 0).toLocaleString("es-AR")}` : ""}
+                            </div>
+                            <div style={{ fontSize: 11, color: "#aaa", marginTop: 1 }}>
+                              {(p.montoEfectivo || 0) > 0 && <span>Efectivo ${p.montoEfectivo.toLocaleString("es-AR")}</span>}
+                              {(p.montoEfectivo || 0) > 0 && (p.montoTransferencia || 0) > 0 && <span> · </span>}
+                              {(p.montoTransferencia || 0) > 0 && <span>Transf. ${p.montoTransferencia.toLocaleString("es-AR")}</span>}
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "#111" }}>
+                            ${(p.montoTotal || 0).toLocaleString("es-AR")}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </>
