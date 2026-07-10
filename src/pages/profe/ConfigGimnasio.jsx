@@ -1,6 +1,6 @@
 import { exportarBackupExcel } from "../../utils/exportarExcel";
 import { useEffect, useState } from "react";
-import { doc, getDoc, setDoc, getDocs, deleteDoc, collection, query, where, writeBatch } from "firebase/firestore";
+import { doc, getDoc, setDoc, getDocs, deleteDoc, collection, query, where, writeBatch, addDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useData } from "../../context/DataContext";
 import { crearReservasFijas } from "../../reservasFijas";
