@@ -207,7 +207,8 @@ function Field({ label, children }) {
 }
 
 function CierreTemporario() {
-  const { alumnos } = useData();
+  const { alumnos, config } = useData();
+  const cupoMax = config?.cupoMaximo ?? 15;
   const [desde, setDesde]             = useState("");
   const [hasta, setHasta]             = useState("");
   const [procesando, setProcesando]   = useState(false);
@@ -271,11 +272,13 @@ function CierreTemporario() {
         a.estado === "activo" &&
         (!a.fechaVencimiento || (a.fechaVencimiento?.toDate?.() || new Date(a.fechaVencimiento)).toISOString().split("T")[0] >= hoy)
       );
+      let sinCupo = 0;
       for (const a of conFijos) {
-        await crearReservasFijas(a.uid, (a.nombre + " " + a.apellido).trim(), a.turnosFijos, 4);
+        const { fallidas } = await crearReservasFijas(a.uid, (a.nombre + " " + a.apellido).trim(), a.turnosFijos, 4, cupoMax);
+        if (fallidas.length > 0) sinCupo++;
       }
 
-      setResultado({ levantado: true, fechas: aEliminar.length, regenerados: conFijos.length });
+      setResultado({ levantado: true, fechas: aEliminar.length, regenerados: conFijos.length, sinCupo });
       setDesde(""); setHasta("");
     } catch(e) { alert("Error: " + e.message); }
     setProcesando(false);
@@ -294,6 +297,11 @@ function CierreTemporario() {
               ? "✓ Cierre levantado — " + resultado.fechas + " días liberados. Turnos fijos regenerados para " + resultado.regenerados + " alumno" + (resultado.regenerados !== 1 ? "s" : "") + "."
               : "✓ " + resultado.fechas + " días bloqueados — " + resultado.canceladas + " reservas canceladas."}
           </p>
+          {resultado.levantado && resultado.sinCupo > 0 && (
+            <p style={{ fontSize: 13, color: "#92400e", margin: "6px 0 0" }}>
+              ⚠️ {resultado.sinCupo} alumno{resultado.sinCupo !== 1 ? "s" : ""} no pudo{resultado.sinCupo !== 1 ? "n" : ""} recuperar todos sus turnos fijos porque algún horario ya estaba lleno. Revisá la Grilla semanal.
+            </p>
+          )}
         </div>
       )}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>

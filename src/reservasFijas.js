@@ -2,7 +2,7 @@ import { collection, query, where, getDocs, deleteDoc, doc, writeBatch, serverTi
 import { db } from "./firebase";
 
 const DIAS = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
-const CUPO = 15;
+const CUPO_DEFAULT = 15;
 
 function getLunesDeSemana(base) {
   const d = new Date(base); d.setHours(0,0,0,0);
@@ -19,7 +19,7 @@ function getFechaDia(lunes, dia) {
   return d.toISOString().split("T")[0];
 }
 
-export async function crearReservasFijas(alumnoUid, nombreAlumno, turnos, semanas = 4) {
+export async function crearReservasFijas(alumnoUid, nombreAlumno, turnos, semanas = 4, cupoMax = CUPO_DEFAULT) {
   const hoy = new Date(); hoy.setHours(0,0,0,0);
 
   // Construir candidatos
@@ -45,30 +45,35 @@ export async function crearReservasFijas(alumnoUid, nombreAlumno, turnos, semana
       );
       const snap = await getDocs(q);
       const yaExiste = snap.docs.some(d => d.data().alumnoId === alumnoUid);
-      const lleno    = snap.size >= CUPO;
-      return { ...c, ok: !yaExiste && !lleno };
+      const lleno    = snap.size >= cupoMax;
+      return { ...c, ok: !yaExiste && !lleno, lleno };
     })
   );
 
   // Escribir con batch
   const aEscribir = verificados.filter(x => x.ok);
-  if (aEscribir.length === 0) return;
+  const fallidas  = verificados.filter(x => !x.ok && x.lleno); // llenas de verdad, no cuenta lo que ya tenía reservado
 
-  const batch = writeBatch(db);
-  aEscribir.forEach(r => {
-    const ref = doc(collection(db, "reservas"));
-    batch.set(ref, {
-      alumnoId:     alumnoUid,
-      nombreAlumno: nombreAlumno.trim(),
-      dia:          r.dia,
-      hora:         r.hora,
-      fecha:        r.fecha,
-      esFijo:       true,
-      esRecuperacion: false,
-      creadoEn:     serverTimestamp(),
+  if (aEscribir.length > 0) {
+    const batch = writeBatch(db);
+    aEscribir.forEach(r => {
+      const ref = doc(collection(db, "reservas"));
+      batch.set(ref, {
+        alumnoId:     alumnoUid,
+        nombreAlumno: nombreAlumno.trim(),
+        dia:          r.dia,
+        hora:         r.hora,
+        fecha:        r.fecha,
+        esFijo:       true,
+        esRecuperacion: false,
+        creadoEn:     serverTimestamp(),
+      });
     });
-  });
-  await batch.commit();
+    await batch.commit();
+  }
+
+  // El caller decide qué avisar si quedaron semanas sin reservar por cupo lleno.
+  return { creadas: aEscribir.length, fallidas };
 }
 
 export async function borrarReservasFijas(alumnoUid) {
@@ -87,9 +92,9 @@ export async function borrarReservasFijas(alumnoUid) {
 }
 
 // Alias para compatibilidad
-export async function generarReservasFijas(alumno, semanas = 4) {
-  if (!alumno.uid || !alumno.turnosFijos?.length) return;
-  if (alumno.turnosFijosEstado !== "aprobado") return;
+export async function generarReservasFijas(alumno, semanas = 4, cupoMax = CUPO_DEFAULT) {
+  if (!alumno.uid || !alumno.turnosFijos?.length) return { creadas: 0, fallidas: [] };
+  if (alumno.turnosFijosEstado !== "aprobado") return { creadas: 0, fallidas: [] };
   const nombre = (alumno.nombre || "") + " " + (alumno.apellido || "");
-  await crearReservasFijas(alumno.uid, nombre, alumno.turnosFijos, semanas);
+  return crearReservasFijas(alumno.uid, nombre, alumno.turnosFijos, semanas, cupoMax);
 }

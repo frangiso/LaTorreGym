@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import ModalAgregarAlumno from "./ModalAgregarAlumno";
-import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where, updateDoc, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where, updateDoc, addDoc, serverTimestamp, increment } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useData } from "../../context/DataContext";
+import { procesarListaEspera } from "../../utils/listaEspera";
 
 const DIAS = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
 const DIAS_LABEL = { LUNES:"Lun", MARTES:"Mar", MIERCOLES:"Mié", JUEVES:"Jue", VIERNES:"Vie", SABADO:"Sáb" };
@@ -220,6 +221,17 @@ function ModalSlot({ slot, cupo = 15, onClose }) {
     setCancelando(reservaId);
     const reserva = reservas.find(r => r.id === reservaId);
     await deleteDoc(doc(db, "reservas", reservaId));
+
+    // Si era una recuperación (no por feriado), devolverle el crédito al alumno
+    if (reserva?.alumnoId && reserva.esRecuperacion && !reserva.esPorFeriado) {
+      await updateDoc(doc(db, "usuarios", reserva.alumnoId), {
+        recuperacionesUsadas: increment(-1),
+      });
+    }
+
+    // Avisar al primero en lista de espera de que se liberó el lugar
+    if (reserva) await procesarListaEspera(reserva.dia, reserva.hora, reserva.fecha).catch(() => {});
+
     // Notificar al alumno
     if (reserva?.alumnoId) {
       await addDoc(collection(db, "notificaciones"), {

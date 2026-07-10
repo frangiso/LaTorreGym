@@ -5,13 +5,13 @@ import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import {
   collection, query, where, onSnapshot, addDoc, deleteDoc,
-  doc, getDocs, serverTimestamp, updateDoc
+  doc, getDocs, serverTimestamp, updateDoc, increment
 } from "firebase/firestore";
 import LtHeader from "../../components/LtHeader";
 import { useData } from "../../context/DataContext";
 import MisRutinas from "./MisRutinas";
 import MiHistorial from "./MiHistorial";
-import { agregarListaEspera, salirListaEspera } from "../../utils/listaEspera";
+import { agregarListaEspera, salirListaEspera, procesarListaEspera } from "../../utils/listaEspera";
 import SolicitarTurnosFijos from "./SolicitarTurnosFijos";
 
 const DIAS = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
@@ -149,7 +149,7 @@ export default function PanelAlumno() {
         const key = r.dia + "_" + r.hora.replace(":", "") + "_" + r.fecha;
         if (!map[key]) map[key] = 0;
         map[key]++;
-        if (r.alumnoId === user.uid) mias[key] = { id: d.id, esRecuperacion: r.esRecuperacion || false, esPorFeriado: r.esPorFeriado || false };
+        if (r.alumnoId === user.uid) mias[key] = { id: d.id, esRecuperacion: r.esRecuperacion || false, esPorFeriado: r.esPorFeriado || false, esSuelta: r.esSuelta || false };
       });
       setReservasPorSlot(map);
       setMisReservas(mias);
@@ -174,9 +174,10 @@ export default function PanelAlumno() {
     if (pasado) return { accion: "nada", motivo: "pasado" };
     if (lleno)  return { accion: enEspera[fecha + "_" + hora] ? "en_espera" : "lleno", motivo: "lleno" };
 
-    // CLASE SUELTA: cualquier horario libre
+    // CLASE SUELTA: cualquier horario libre, una sola vez por pago
+    // (perfil.sueltaUsada es un flag persistente, no depende de qué semana esté mirando)
     if (esSuelta) {
-      if (Object.keys(misReservas).length > 0) return { accion: "nada", motivo: "suelta_usada" };
+      if (perfil?.sueltaUsada) return { accion: "nada", motivo: "suelta_usada" };
       return { accion: "reservar_suelta" };
     }
 
@@ -233,13 +234,19 @@ export default function PanelAlumno() {
         esFijo:         tipo === "reservar_fijo",
         esRecuperacion: tipo === "recuperacion" || tipo === "recuperacion_feriado",
         esPorFeriado:   tipo === "recuperacion_feriado",
+        esSuelta:       tipo === "reservar_suelta",
         creadoEn:       serverTimestamp(),
       });
-      // Solo descuenta recuperacion si NO es por feriado en turno fijo
+      // Solo descuenta recuperacion si NO es por feriado en turno fijo.
+      // Se usa increment() (atómico) en vez de sumar recUsadas a mano, para
+      // que dos confirmaciones casi simultáneas no se pisen el contador.
       if (tipo === "recuperacion") {
         await updateDoc(doc(db, "usuarios", user.uid), {
-          recuperacionesUsadas: recUsadas + 1,
+          recuperacionesUsadas: increment(1),
         });
+      }
+      if (tipo === "reservar_suelta") {
+        await updateDoc(doc(db, "usuarios", user.uid), { sueltaUsada: true });
       }
       // recuperacion_feriado: no descuenta del contador
     } finally { setProcesando(null); }
@@ -255,13 +262,19 @@ export default function PanelAlumno() {
     setProcesando(key);
     try {
       // Usar datos ya cacheados — sin getDocs extra
-      const esRec = reservaData.esRecuperacion && !reservaData.esPorFeriado;
+      const esRec    = reservaData.esRecuperacion && !reservaData.esPorFeriado;
+      const esSuelta = reservaData.esSuelta;
       await deleteDoc(doc(db, "reservas", reservaData.id));
       if (esRec) {
         await updateDoc(doc(db, "usuarios", user.uid), {
-          recuperacionesUsadas: Math.max(0, recUsadas - 1),
+          recuperacionesUsadas: increment(-1),
         });
       }
+      if (esSuelta) {
+        await updateDoc(doc(db, "usuarios", user.uid), { sueltaUsada: false });
+      }
+      // Avisar al primero en lista de espera de que se liberó el lugar
+      await procesarListaEspera(dia, hora, fecha).catch(() => {});
     } finally { setProcesando(null); }
   }
 
@@ -373,7 +386,7 @@ export default function PanelAlumno() {
                 <div style={{ color: "#F5C400", fontWeight: 500, fontSize: 14, marginBottom: 4 }}>
                   {confirmando.tipo === "recuperacion_feriado" ? "Recuperación por feriado (gratis)" :
                    confirmando.tipo === "recuperacion" ? "Usar clase de recuperación" :
-                   confirmando.tipo === "suelta"       ? "Confirmar clase suelta" : "Confirmar reserva"}
+                   confirmando.tipo === "reservar_suelta" ? "Confirmar clase suelta" : "Confirmar reserva"}
                 </div>
                 <div style={{ color: "#aaa", fontSize: 13, marginBottom: 4 }}>
                   {DIAS_FULL[confirmando.dia]} {confirmando.hora} — {confirmando.fecha}
@@ -388,7 +401,7 @@ export default function PanelAlumno() {
                     Usás 1 recuperación. Te quedan {recDisp - 1} después de esta.
                   </div>
                 )}
-                {confirmando.tipo === "suelta" && (
+                {confirmando.tipo === "reservar_suelta" && (
                   <div style={{ color: "#888", fontSize: 12, marginBottom: 10 }}>Esta es tu única clase. No podrás reservar más.</div>
                 )}
                 <div style={{ display: "flex", gap: 8 }}>

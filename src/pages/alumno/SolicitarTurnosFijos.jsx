@@ -130,6 +130,7 @@ export default function SolicitarTurnosFijos({ perfil, user }) {
         return { ...c, ok: !yaExiste && !lleno };
       }));
       const aEscribir = verificados.filter(x => x.ok);
+      const fallidas  = verificados.filter(x => !x.ok);
       if (aEscribir.length > 0) {
         const batch = writeBatch(db);
         aEscribir.forEach(r => {
@@ -142,6 +143,13 @@ export default function SolicitarTurnosFijos({ perfil, user }) {
       }
       setModo("ver"); setOk(true);
       setTimeout(() => setOk(false), 3000);
+      if (fallidas.length > 0) {
+        alert(
+          `Tus turnos fijos quedaron guardados, pero ${fallidas.length} semana${fallidas.length !== 1 ? "s" : ""} no se pudo reservar porque el horario ya estaba lleno:\n` +
+          fallidas.map(f => `${f.dia} ${f.hora} (${f.fecha})`).join("\n") +
+          "\nAvisale al profe para que lo revise."
+        );
+      }
     } catch(e) { console.error(e); alert("Hubo un error. Intentá de nuevo."); }
     setGuardando(false);
   }

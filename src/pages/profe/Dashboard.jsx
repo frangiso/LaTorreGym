@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import {
   collection, query, where, onSnapshot, doc,
-  updateDoc, deleteDoc, serverTimestamp, addDoc
+  updateDoc, deleteDoc, serverTimestamp, addDoc, increment
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useData } from "../../context/DataContext";
 import { correrMantenimiento, alumnosProximosAVencer } from "../../utils/mantenimiento";
 import { exportarAlumnos, exportarPlanillaDia, exportarPlanillaSemanal } from "../../utils/exportarExcel";
+import { procesarListaEspera } from "../../utils/listaEspera";
 import ModalAgregarAlumno from "./ModalAgregarAlumno";
 
 const DIAS_ES = ["DOMINGO","LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
@@ -275,6 +276,10 @@ function CancelarBtn({ reservaId, reserva }) {
           setLoading(true);
           const r = reserva || {};
           await deleteDoc(doc(db,"reservas",reservaId));
+          if (r.alumnoId && r.esRecuperacion && !r.esPorFeriado) {
+            await updateDoc(doc(db, "usuarios", r.alumnoId), { recuperacionesUsadas: increment(-1) });
+          }
+          await procesarListaEspera(r.dia, r.hora, r.fecha).catch(() => {});
           if (r.alumnoId) {
             await addDoc(collection(db,"notificaciones"), {
               alumnoId: r.alumnoId,

@@ -305,6 +305,8 @@ export default function PagosPendientes() {
       montoTransferencia,
       nroRecibo,
       inscripcionPagada:  cobrarInscripcion ? true : (alumno.inscripcionPagada || false),
+      // Plan "suelta": cada pago habilita una clase nueva.
+      ...(alumno.planId === "suelta" ? { sueltaUsada: false } : {}),
       ...(descuentoPct > 0 ? { descuentoAplicado } : { descuentoAplicado: deleteField() }),
     });
 

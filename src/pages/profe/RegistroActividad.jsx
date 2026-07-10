@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, query, onSnapshot, limit } from "firebase/firestore";
+import { collection, query, onSnapshot, orderBy, limit } from "firebase/firestore";
 import { db } from "../../firebase";
 
 export default function RegistroActividad() {
@@ -7,9 +7,12 @@ export default function RegistroActividad() {
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, "actividad"), limit(100));
+    // orderBy es imprescindible acá: sin él, Firestore devuelve un subconjunto
+    // arbitrario/estable de 100 docs (por ID), no los 100 más recientes — pasado
+    // ese volumen, la actividad nueva dejaba de aparecer.
+    const q = query(collection(db, "actividad"), orderBy("creadoEn", "desc"), limit(100));
     const fn = onSnapshot(q, snap => {
-      setActividad(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.creadoEn?.seconds||0) - (a.creadoEn?.seconds||0)));
+      setActividad(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       setCargando(false);
     });
     return fn;

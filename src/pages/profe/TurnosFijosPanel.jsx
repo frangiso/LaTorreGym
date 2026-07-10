@@ -67,8 +67,15 @@ export default function TurnosFijosPanel() {
         turnosFijosEstado: "aprobado",
         recuperacionesUsadas: 0,
       });
-      await crearReservasFijas(modal.uid, nombre, selProfe, 4);
+      const { creadas, fallidas } = await crearReservasFijas(modal.uid, nombre, selProfe, 4, CUPO);
       setModal(null); setSelProfe([]);
+      if (fallidas.length > 0) {
+        alert(
+          `Se asignaron los turnos, pero ${fallidas.length} de ${creadas + fallidas.length} semanas no se pudieron reservar porque el horario ya estaba lleno:\n` +
+          fallidas.map(f => `${f.dia} ${f.hora} (${f.fecha})`).join("\n") +
+          "\nRevisalas manualmente en la Grilla semanal."
+        );
+      }
     } catch (e) { console.error(e); alert("Error al guardar."); }
     setGuardando(false);
   }

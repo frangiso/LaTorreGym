@@ -18,6 +18,7 @@ export default function PanelAlumnos() {
   const { alumnos, config }         = useData();
   const { perfil: miPerfil }          = useAuth();
   const planes                      = config?.planes || [];
+  const cupoMax                     = config?.cupoMaximo ?? 15;
   const [filtro, setFiltro]         = useState("todos");
   const [busqueda, setBusqueda]     = useState("");
   const [editando, setEditando]     = useState(null);
@@ -68,7 +69,7 @@ export default function PanelAlumnos() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {filtrados.map(a => (
-            <AlumnoCard key={a.uid} alumno={a} planes={planes}
+            <AlumnoCard key={a.uid} alumno={a} planes={planes} cupoMax={cupoMax}
               editando={editando === a.uid}
               onEditar={() => setEditando(a.uid)}
               onCerrar={() => setEditando(null)} />
@@ -85,7 +86,7 @@ const DIAS_SEMANA = ["LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO"];
 const HORAS = Array.from({ length: 16 }, (_, i) => String(i + 7).padStart(2, "0") + ":00");
 const HORAS_SAB = Array.from({ length: 6 }, (_, i) => String(i + 8).padStart(2, "0") + ":00");
 
-function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
+function AlumnoCard({ alumno: a, planes, cupoMax, editando, onEditar, onCerrar }) {
   const colors = ESTADO_COLOR[a.estado] || { bg: "#f0f0f0", color: "#555" };
   const [tab, setTab] = useState("datos"); // "datos" | "turnos"
   const [form, setForm] = useState({
@@ -165,13 +166,11 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
     setGuardando(true);
     try {
       const plan = planes.find(p => p.id === form.planId);
-      const hoy = new Date();
-      const vencAnterior = a.fechaVencimiento
-        ? new Date(a.fechaVencimiento.toDate?.() || a.fechaVencimiento)
-        : null;
-      const base = vencAnterior && vencAnterior > hoy ? vencAnterior : hoy;
-      const vence = new Date(base.getFullYear(), base.getMonth() + 1, base.getDate());
 
+      // Nota: acá solo se corrigen datos y se asigna a qué plan pertenece el
+      // alumno. Activar la cuenta, cobrar y extender el vencimiento se hace
+      // siempre con "Registrar pago" (PagosPendientes), para que quede
+      // registrado en la caja del mes y en el historial de pagos.
       const updates = {
         nombre:             form.nombre,
         apellido:           form.apellido,
@@ -189,22 +188,22 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
         turnosFijosEstado: turnosFijos.length > 0 ? "aprobado" : null,
       };
 
-      if (form.planId && form.planId !== a.planId) {
-        updates.montoPagado      = form.metodoPago === "transferencia" ? plan.precioTransferencia : plan.precioEfectivo;
-        updates.fechaActivacion  = new Date();
-        updates.fechaVencimiento = vence;
-        updates.estado           = "activo";
-      }
-
       await updateDoc(doc(db, "usuarios", a.uid), updates);
       if (turnosFijos.length > 0) {
-        await generarReservasFijas({
+        const { fallidas } = await generarReservasFijas({
           uid: a.uid,
           nombre: updates.nombre,
           apellido: updates.apellido,
           turnosFijos,
           turnosFijosEstado: "aprobado",
-        }, 4);
+        }, 4, cupoMax);
+        if (fallidas.length > 0) {
+          alert(
+            `Se guardaron los turnos fijos, pero ${fallidas.length} semana${fallidas.length !== 1 ? "s" : ""} no se pudo reservar porque el horario ya estaba lleno:\n` +
+            fallidas.map(f => `${f.dia} ${f.hora} (${f.fecha})`).join("\n") +
+            "\nRevisalo manualmente en la Grilla semanal."
+          );
+        }
       }
       setOk(true);
       setTimeout(() => { setOk(false); onCerrar(); }, 1200);
@@ -386,6 +385,9 @@ function AlumnoCard({ alumno: a, planes, editando, onEditar, onCerrar }) {
                 </div>
 
                 <p style={{ fontSize: 11, fontWeight: 500, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 10px" }}>Plan y estado</p>
+                <p style={{ fontSize: 12, color: "#888", margin: "0 0 10px", background: "#f9f9f9", borderRadius: 8, padding: "8px 12px" }}>
+                  Cambiar el plan o el estado acá no cobra ni renueva el vencimiento. Para eso usá el botón "Registrar pago" / "Renovar".
+                </p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
                   <div>
                     <label style={{ fontSize: 12, color: "#888", display: "block", marginBottom: 3 }}>Plan</label>
