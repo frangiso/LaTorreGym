@@ -146,23 +146,24 @@ export function generarReciboHTML({ nro, nombre, apellido, planNombre, montoEfec
 
 /* ── HTML de caja del día/mes para imprimir ── */
 export function generarCajaHTML({ pagos, titulo, logoUrl }) {
-  const totalEf = pagos.reduce((s, a) => s + (a.montoEfectivo      ?? (a.metodoPago === "efectivo"      ? a.montoPagado : 0)), 0);
-  const totalTr = pagos.reduce((s, a) => s + (a.montoTransferencia ?? (a.metodoPago === "transferencia"  ? a.montoPagado : 0)), 0);
+  const totalEf = pagos.reduce((s, p) => s + (p.montoEfectivo || 0), 0);
+  const totalTr = pagos.reduce((s, p) => s + (p.montoTransferencia || 0), 0);
   const total   = totalEf + totalTr;
 
   const filas = pagos
-    .sort((a, b) => new Date(a.fechaActivacion?.toDate?.() || a.fechaActivacion) - new Date(b.fechaActivacion?.toDate?.() || b.fechaActivacion))
-    .map(a => {
-      const ef = a.montoEfectivo      ?? (a.metodoPago === "efectivo"      ? a.montoPagado : 0);
-      const tr = a.montoTransferencia ?? (a.metodoPago === "transferencia"  ? a.montoPagado : 0);
-      const fecha = new Date(a.fechaActivacion?.toDate?.() || a.fechaActivacion).toLocaleDateString("es-AR");
+    .slice()
+    .sort((a, b) => new Date(a.fechaPago?.toDate?.() || a.fechaPago) - new Date(b.fechaPago?.toDate?.() || b.fechaPago))
+    .map(p => {
+      const ef = p.montoEfectivo || 0;
+      const tr = p.montoTransferencia || 0;
+      const fecha = new Date(p.fechaPago?.toDate?.() || p.fechaPago).toLocaleDateString("es-AR");
       return `<tr>
         <td>${fecha}</td>
-        <td>${a.nombre} ${a.apellido}</td>
-        <td>${a.planNombre || "—"}</td>
+        <td>${p.alumnoNombre} ${p.alumnoApellido}</td>
+        <td>${p.planNombre || "—"}</td>
         <td class="num">${ef > 0 ? "$" + ef.toLocaleString("es-AR") : "—"}</td>
         <td class="num">${tr > 0 ? "$" + tr.toLocaleString("es-AR") : "—"}</td>
-        <td class="num"><strong>$${(a.montoPagado||0).toLocaleString("es-AR")}</strong></td>
+        <td class="num"><strong>$${(p.montoTotal||0).toLocaleString("es-AR")}</strong></td>
       </tr>`;
     }).join("");
 

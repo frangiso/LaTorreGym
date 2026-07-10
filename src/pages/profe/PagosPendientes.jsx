@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { doc, updateDoc, serverTimestamp, addDoc, collection, deleteField, runTransaction } from "firebase/firestore";
+import { useState, useEffect } from "react";
+import { doc, updateDoc, deleteDoc, serverTimestamp, addDoc, collection, deleteField, runTransaction, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useData } from "../../context/DataContext";
 import { useAuth } from "../../context/AuthContext";
@@ -204,16 +204,36 @@ export default function PagosPendientes() {
   const [anioVer, setAnioVer] = useState(new Date().getFullYear());
   const [editModal,     setEditModal]     = useState(null);
   const [editGuardando, setEditGuardando] = useState(false);
+  const [pagosDelMes,   setPagosDelMes]   = useState([]);
+  const [cargandoCaja,  setCargandoCaja]  = useState(false);
 
-  const pagosDelMes = todosAlumnos.filter(a => {
-    if (!a.fechaActivacion || !a.montoPagado) return false;
-    if (a.estado !== "activo") return false;
-    const fecha = new Date(a.fechaActivacion.toDate?.() || a.fechaActivacion);
-    return fecha.getMonth() === mesVer && fecha.getFullYear() === anioVer;
-  });
+  // La caja del mes se arma a partir del historial de pagos (colección "pagos"),
+  // no del último pago guardado en la ficha del alumno: así un pago viejo sigue
+  // apareciendo en su mes aunque el alumno ya haya renovado después.
+  useEffect(() => {
+    let vigente = true;
+    setCargandoCaja(true);
+    const inicio = new Date(anioVer, mesVer, 1);
+    const fin    = new Date(anioVer, mesVer + 1, 1);
+    getDocs(query(
+      collection(db, "pagos"),
+      where("fechaPago", ">=", inicio),
+      where("fechaPago", "<", fin)
+    )).then(snap => {
+      if (!vigente) return;
+      const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      lista.sort((x, y) => {
+        const fx = x.fechaPago?.toDate?.() || new Date(x.fechaPago || 0);
+        const fy = y.fechaPago?.toDate?.() || new Date(y.fechaPago || 0);
+        return fy - fx;
+      });
+      setPagosDelMes(lista);
+    }).finally(() => vigente && setCargandoCaja(false));
+    return () => { vigente = false; };
+  }, [mesVer, anioVer]);
 
-  const totalEfectivo      = pagosDelMes.reduce((s, a) => s + (a.montoEfectivo      ?? (a.metodoPago === "efectivo"      ? a.montoPagado : 0)), 0);
-  const totalTransferencia = pagosDelMes.reduce((s, a) => s + (a.montoTransferencia ?? (a.metodoPago === "transferencia"  ? a.montoPagado : 0)), 0);
+  const totalEfectivo      = pagosDelMes.reduce((s, p) => s + (p.montoEfectivo || 0), 0);
+  const totalTransferencia = pagosDelMes.reduce((s, p) => s + (p.montoTransferencia || 0), 0);
   const totalGeneral       = totalEfectivo + totalTransferencia;
 
   function cambiarMes(dir) {
@@ -335,32 +355,58 @@ export default function PagosPendientes() {
 
   async function guardarEdicion() {
     setEditGuardando(true);
-    const total = (Number(editModal.montoEfectivo) || 0) + (Number(editModal.montoTransferencia) || 0);
-    await updateDoc(doc(db, "usuarios", editModal.alumno.uid), {
-      montoPagado:        total,
-      montoEfectivo:      Number(editModal.montoEfectivo)      || 0,
-      montoTransferencia: Number(editModal.montoTransferencia) || 0,
+    const pago = editModal.pago;
+    const montoEfectivo      = Number(editModal.montoEfectivo)      || 0;
+    const montoTransferencia = Number(editModal.montoTransferencia) || 0;
+    const total = montoEfectivo + montoTransferencia;
+
+    await updateDoc(doc(db, "pagos", pago.id), {
+      montoEfectivo, montoTransferencia, montoTotal: total,
     });
+
+    // Si este es el pago vigente del alumno (el que lo tiene activo hoy),
+    // se sincroniza también su ficha para que no quede desactualizada.
+    const alumnoActual = todosAlumnos.find(al => al.uid === pago.alumnoUid);
+    if (alumnoActual && pago.nroRecibo && alumnoActual.nroRecibo === pago.nroRecibo) {
+      await updateDoc(doc(db, "usuarios", pago.alumnoUid), {
+        montoPagado: total, montoEfectivo, montoTransferencia,
+      });
+    }
+
+    setPagosDelMes(prev => prev.map(p => p.id === pago.id ? { ...p, montoEfectivo, montoTransferencia, montoTotal: total } : p));
+
     await registrarActividad(
       miPerfil?.uid || "", miNombre.trim(), "pago_editado",
-      `Pago editado: ${editModal.alumno.nombre} ${editModal.alumno.apellido} — total $${total.toLocaleString("es-AR")}`
+      `Pago editado: ${pago.alumnoNombre} ${pago.alumnoApellido} — total $${total.toLocaleString("es-AR")}`
     );
     setEditModal(null);
     setEditGuardando(false);
   }
 
-  async function eliminarPago(a) {
-    await updateDoc(doc(db, "usuarios", a.uid), {
-      estado:             "inactivo",
-      fechaActivacion:    deleteField(),
-      fechaVencimiento:   deleteField(),
-      montoPagado:        deleteField(),
-      montoEfectivo:      deleteField(),
-      montoTransferencia: deleteField(),
-    });
+  async function eliminarPago(pago) {
+    await deleteDoc(doc(db, "pagos", pago.id));
+
+    // Solo se desactiva al alumno si el pago borrado es el que lo tiene activo
+    // hoy. Si es un pago viejo ya reemplazado por una renovación posterior,
+    // se borra el registro histórico nada más y no se toca su estado actual.
+    const alumnoActual = todosAlumnos.find(al => al.uid === pago.alumnoUid);
+    const esPagoVigente = alumnoActual && pago.nroRecibo && alumnoActual.nroRecibo === pago.nroRecibo;
+    if (esPagoVigente) {
+      await updateDoc(doc(db, "usuarios", pago.alumnoUid), {
+        estado:             "inactivo",
+        fechaActivacion:    deleteField(),
+        fechaVencimiento:   deleteField(),
+        montoPagado:        deleteField(),
+        montoEfectivo:      deleteField(),
+        montoTransferencia: deleteField(),
+      });
+    }
+
+    setPagosDelMes(prev => prev.filter(p => p.id !== pago.id));
+
     await registrarActividad(
       miPerfil?.uid || "", miNombre.trim(), "pago_eliminado",
-      `Pago eliminado: ${a.nombre} ${a.apellido}`
+      `Pago eliminado: ${pago.alumnoNombre} ${pago.alumnoApellido}${esPagoVigente ? " (el alumno pasó a inactivo)" : ""}`
     );
   }
 
@@ -374,7 +420,7 @@ export default function PagosPendientes() {
           <div style={{ background:"#fff", borderRadius:16, padding:24, maxWidth:380, width:"100%" }}
             onClick={e => e.stopPropagation()}>
             <h3 style={{ fontSize:16, fontWeight:500, margin:"0 0 4px" }}>Editar pago</h3>
-            <p style={{ fontSize:13, color:"#888", margin:"0 0 16px" }}>{editModal.alumno.nombre} {editModal.alumno.apellido}</p>
+            <p style={{ fontSize:13, color:"#888", margin:"0 0 16px" }}>{editModal.pago.alumnoNombre} {editModal.pago.alumnoApellido}</p>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
               <div>
                 <label style={{ fontSize:12, color:"#888", display:"block", marginBottom:4 }}>Efectivo $</label>
@@ -415,6 +461,7 @@ export default function PagosPendientes() {
               style={{ background:"#fff", border:"0.5px solid #e0e0e0", borderRadius:8, padding:"6px 14px", fontSize:13, cursor: pagosDelMes.length > 0 ? "pointer" : "not-allowed", color: pagosDelMes.length > 0 ? "#111" : "#bbb" }}>
               🖨 Imprimir caja
             </button>
+            {cargandoCaja && <span style={{ fontSize:12, color:"#aaa" }}>Cargando...</span>}
             <button onClick={() => cambiarMes(-1)} style={{ background:"#fff", border:"0.5px solid #e0e0e0", borderRadius:8, padding:"6px 12px", cursor:"pointer" }}>←</button>
             <span style={{ fontSize:14, fontWeight:500, color:"#111", minWidth:130, textAlign:"center" }}>{MESES[mesVer]} {anioVer}</span>
             <button onClick={() => cambiarMes(1)}  style={{ background:"#fff", border:"0.5px solid #e0e0e0", borderRadius:8, padding:"6px 12px", cursor:"pointer" }}>→</button>
@@ -449,23 +496,24 @@ export default function PagosPendientes() {
             <div style={{ padding:"12px 16px", borderBottom:"0.5px solid #f0f0f0" }}>
               <span style={{ fontSize:13, fontWeight:500, color:"#111" }}>Detalle de pagos</span>
             </div>
-            {pagosDelMes
-              .sort((a,b) => new Date(b.fechaActivacion?.toDate?.() || b.fechaActivacion) - new Date(a.fechaActivacion?.toDate?.() || a.fechaActivacion))
-              .map((a, i) => {
-                const fecha = new Date(a.fechaActivacion?.toDate?.() || a.fechaActivacion);
-                const ef    = a.montoEfectivo      ?? (a.metodoPago === "efectivo"     ? a.montoPagado : 0);
-                const tr    = a.montoTransferencia ?? (a.metodoPago === "transferencia"? a.montoPagado : 0);
+            {pagosDelMes.map((p, i) => {
+                const fecha = p.fechaPago?.toDate?.() || new Date(p.fechaPago);
+                const ef = p.montoEfectivo || 0;
+                const tr = p.montoTransferencia || 0;
+                const alumnoActual = todosAlumnos.find(al => al.uid === p.alumnoUid);
+                const esPagoVigente = alumnoActual && p.nroRecibo && alumnoActual.nroRecibo === p.nroRecibo;
                 return (
-                  <div key={a.uid} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 16px", gap:12, borderBottom: i < pagosDelMes.length-1 ? "0.5px solid #f5f5f5" : "none", background: i%2===0 ? "#fff" : "#fafafa" }}>
+                  <div key={p.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 16px", gap:12, borderBottom: i < pagosDelMes.length-1 ? "0.5px solid #f5f5f5" : "none", background: i%2===0 ? "#fff" : "#fafafa" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:10, flex:1, minWidth:0 }}>
                       <div style={{ width:30, height:30, borderRadius:"50%", background:"#F5C400", color:"#111", fontSize:11, fontWeight:500, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                        {(a.nombre||"?").charAt(0).toUpperCase()}
+                        {(p.alumnoNombre||"?").charAt(0).toUpperCase()}
                       </div>
                       <div style={{ minWidth:0 }}>
-                        <div style={{ fontSize:13, fontWeight:500, color:"#111", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{a.nombre} {a.apellido}</div>
+                        <div style={{ fontSize:13, fontWeight:500, color:"#111", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.alumnoNombre} {p.alumnoApellido}</div>
                         <div style={{ fontSize:11, color:"#aaa" }}>
-                          {a.planNombre} · {fecha.toLocaleDateString("es-AR")}
-                          {a.descuentoAplicado && <span style={{ color:"#10b981", marginLeft:4 }}>· {a.descuentoAplicado}</span>}
+                          {p.planNombre} · {fecha.toLocaleDateString("es-AR")}
+                          {p.descuentoAplicado && <span style={{ color:"#10b981", marginLeft:4 }}>· {p.descuentoAplicado}</span>}
+                          {!esPagoVigente && <span style={{ marginLeft:4 }}>· pago anterior</span>}
                         </div>
                         {(ef > 0 || tr > 0) && (
                           <div style={{ fontSize:11, color:"#aaa", marginTop:1 }}>
@@ -477,22 +525,27 @@ export default function PagosPendientes() {
                       </div>
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
-                      {a.nroRecibo && <span style={{ fontSize:11, color:"#aaa" }}>#{a.nroRecibo}</span>}
-                      <span style={{ fontSize:14, fontWeight:500, color:"#111" }}>${(a.montoPagado||0).toLocaleString("es-AR")}</span>
+                      {p.nroRecibo && <span style={{ fontSize:11, color:"#aaa" }}>#{p.nroRecibo}</span>}
+                      <span style={{ fontSize:14, fontWeight:500, color:"#111" }}>${(p.montoTotal||0).toLocaleString("es-AR")}</span>
                       <button
-                        onClick={() => abrirRecibo(a, a.nroRecibo || "—", { montoEfectivo: ef, montoTransferencia: tr, totalFinal: a.montoPagado || 0 })}
+                        onClick={() => abrirRecibo({ nombre: p.alumnoNombre, apellido: p.alumnoApellido, planNombre: p.planNombre }, p.nroRecibo || "—", { montoEfectivo: ef, montoTransferencia: tr, totalFinal: p.montoTotal || 0 })}
                         title="Reimprimir recibo"
                         style={{ background:"transparent", border:"0.5px solid #e0e0e0", borderRadius:6, padding:"4px 8px", fontSize:12, color:"#888", cursor:"pointer" }}>
                         🖨
                       </button>
                       <button
-                        onClick={() => setEditModal({ alumno: a, montoEfectivo: ef, montoTransferencia: tr })}
+                        onClick={() => setEditModal({ pago: p, montoEfectivo: ef, montoTransferencia: tr })}
                         title="Editar pago"
                         style={{ background:"transparent", border:"0.5px solid #e0e0e0", borderRadius:6, padding:"4px 8px", fontSize:12, color:"#888", cursor:"pointer" }}>
                         ✏️
                       </button>
                       <button
-                        onClick={() => { if (window.confirm(`¿Eliminar el pago de ${a.nombre} ${a.apellido}? El alumno pasará a inactivo.`)) eliminarPago(a); }}
+                        onClick={() => {
+                          const aviso = esPagoVigente
+                            ? `¿Eliminar el pago de ${p.alumnoNombre} ${p.alumnoApellido}? El alumno pasará a inactivo.`
+                            : `¿Eliminar este pago anterior de ${p.alumnoNombre} ${p.alumnoApellido}? Es un pago viejo, no afecta su estado actual.`;
+                          if (window.confirm(aviso)) eliminarPago(p);
+                        }}
                         title="Eliminar pago"
                         style={{ background:"transparent", border:"0.5px solid #fca5a5", borderRadius:6, padding:"4px 8px", fontSize:12, color:"#dc2626", cursor:"pointer" }}>
                         🗑
