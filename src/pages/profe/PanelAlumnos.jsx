@@ -31,6 +31,14 @@ export default function PanelAlumnos() {
     return matchEstado && matchBusqueda;
   });
 
+  const conteos = {
+    todos:          alumnos.length,
+    activo:         alumnos.filter(a => a.estado === "activo").length,
+    pago_pendiente: alumnos.filter(a => a.estado === "pago_pendiente").length,
+    pendiente:      alumnos.filter(a => a.estado === "pendiente").length,
+    inactivo:       alumnos.filter(a => a.estado === "inactivo").length,
+  };
+
   return (
     <div>
       {/* Header */}
@@ -45,6 +53,19 @@ export default function PanelAlumnos() {
         </button>
       </div>
 
+      {/* Resumen por estado */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        {["activo", "pago_pendiente", "pendiente", "inactivo"].map(e => {
+          const c = ESTADO_COLOR[e];
+          return (
+            <div key={e} style={{ background: c.bg, borderRadius: 10, padding: "8px 16px", textAlign: "center", minWidth: 84 }}>
+              <div style={{ fontSize: 20, fontWeight: 500, color: c.color }}>{conteos[e]}</div>
+              <div style={{ fontSize: 11, color: c.color }}>{ESTADO_LABEL[e]}</div>
+            </div>
+          );
+        })}
+      </div>
+
       {/* Filtros */}
       <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
         {["todos", "activo", "pago_pendiente", "pendiente", "inactivo"].map(e => (
@@ -55,7 +76,7 @@ export default function PanelAlumnos() {
               border: "0.5px solid " + (filtro === e ? "#111" : "#e0e0e0"),
               borderRadius: 20, padding: "5px 14px", fontSize: 12, cursor: "pointer"
             }}>
-            {e === "todos" ? "Todos" : (ESTADO_LABEL[e] || e)}
+            {e === "todos" ? "Todos" : (ESTADO_LABEL[e] || e)} ({conteos[e] ?? 0})
           </button>
         ))}
       </div>
