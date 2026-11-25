@@ -21,17 +21,28 @@ function PendingCard({ alumno, procesando, onConfirmar, onRechazar }) {
   const esEfectivo = alumno.metodoPago === "efectivo";
   const precioBase = alumno.montoPagado || 0;
 
+  const [mesesAPagar,        setMesesAPagar]        = useState(1);
   const [cobrarInscripcion,  setCobrarInscripcion]  = useState(!alumno.inscripcionPagada);
   const [montoInscripcion,   setMontoInscripcion]   = useState(INSCRIPCION_DEFECTO);
   const [inscripcionMetodo,  setInscripcionMetodo]  = useState("efectivo");
   const [descuentoPct,       setDescuentoPct]        = useState(esEfectivo && alumno.descuentoFutbol ? 15 : 0);
 
   const cuotaConDesc  = esEfectivo && descuentoPct > 0 ? Math.round(precioBase * (1 - descuentoPct / 100)) : precioBase;
+  const cuotaTotal    = cuotaConDesc * mesesAPagar;
   const inscMonto     = cobrarInscripcion ? (Number(montoInscripcion) || 0) : 0;
-  const totalSugerido = cuotaConDesc + inscMonto;
+  const totalSugerido = cuotaTotal + inscMonto;
 
   const [montoEfectivo,      setMontoEfectivo]      = useState(() => esEfectivo ? precioBase : 0);
   const [montoTransferencia, setMontoTransferencia] = useState(() => !esEfectivo ? precioBase : 0);
+
+  // Si cambia la cantidad de meses, actualizar el monto sugerido del método precargado
+  // (el profe igual puede pisarlo a mano).
+  function cambiarMeses(n) {
+    setMesesAPagar(n);
+    const nuevaCuota = cuotaConDesc * n;
+    if (esEfectivo) setMontoEfectivo(nuevaCuota);
+    else setMontoTransferencia(nuevaCuota);
+  }
 
   // Totales incorporando método de inscripción
   const efTotal  = (Number(montoEfectivo)      || 0) + (cobrarInscripcion && inscripcionMetodo === "efectivo"      ? inscMonto : 0);
@@ -66,6 +77,27 @@ function PendingCard({ alumno, procesando, onConfirmar, onRechazar }) {
       </div>
 
       <div style={{ marginTop:14, display:"flex", flexDirection:"column", gap:10 }}>
+
+        {/* Meses a pagar (para adelantar 2 o 3 meses juntos) */}
+        <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+          <label style={{ fontSize:13, color:"#555", flexShrink:0 }}>Meses a pagar</label>
+          <div style={{ display:"flex", gap:6 }}>
+            {[1,2,3].map(n => (
+              <button key={n} type="button" onClick={() => cambiarMeses(n)}
+                style={{ padding:"5px 14px", borderRadius:20, fontSize:13, cursor:"pointer", fontWeight: mesesAPagar===n ? 600 : 400,
+                  background: mesesAPagar===n ? "#F5C400" : "transparent",
+                  border: mesesAPagar===n ? "none" : "0.5px solid #e0e0e0",
+                  color: mesesAPagar===n ? "#111" : "#888" }}>
+                {n}
+              </button>
+            ))}
+          </div>
+          {mesesAPagar > 1 && (
+            <span style={{ fontSize:12, color:"#888" }}>
+              Vencimiento: hoy + {mesesAPagar} meses
+            </span>
+          )}
+        </div>
 
         {/* Inscripción */}
         <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
@@ -107,7 +139,7 @@ function PendingCard({ alumno, procesando, onConfirmar, onRechazar }) {
               style={{ ...inp, width:75, textAlign:"center" }} />
             {descuentoPct > 0 && (
               <span style={{ fontSize:12, color:"#888" }}>
-                cuota {precioBase.toLocaleString("es-AR")} → {cuotaConDesc.toLocaleString("es-AR")}
+                cuota {precioBase.toLocaleString("es-AR")} → {cuotaConDesc.toLocaleString("es-AR")}{mesesAPagar > 1 ? ` × ${mesesAPagar} = ${cuotaTotal.toLocaleString("es-AR")}` : ""}
               </span>
             )}
           </div>
@@ -120,7 +152,7 @@ function PendingCard({ alumno, procesando, onConfirmar, onRechazar }) {
         {/* Montos efectivo / transferencia */}
         <div>
           <p style={{ fontSize:12, color:"#888", margin:"0 0 6px" }}>
-            Monto cobrado <span style={{ color:"#aaa" }}>(cuota sin inscripción)</span>
+            Monto cobrado <span style={{ color:"#aaa" }}>(cuota sin inscripción{mesesAPagar > 1 ? `, ${mesesAPagar} meses` : ""})</span>
           </p>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
             <div>
@@ -177,6 +209,7 @@ function PendingCard({ alumno, procesando, onConfirmar, onRechazar }) {
               descuentoPct,
               cobrarInscripcion,
               montoInscripcion:   Number(montoInscripcion) || 0,
+              mesesAPagar,
             })}
             disabled={procesando === alumno.uid}
             style={{ background:"#F5C400", color:"#111", border:"none", borderRadius:8, padding:"9px 18px", fontSize:13, fontWeight:500, cursor:"pointer" }}>
@@ -280,20 +313,18 @@ export default function PagosPendientes() {
     win.document.close();
   }
 
-  async function confirmar(alumno, { montoEfectivo, montoTransferencia, totalFinal, descuentoPct, cobrarInscripcion, montoInscripcion }) {
+  async function confirmar(alumno, { montoEfectivo, montoTransferencia, totalFinal, descuentoPct, cobrarInscripcion, montoInscripcion, mesesAPagar }) {
     setProcesando(alumno.uid);
-    const hoy = new Date();
-    const vencAnterior = alumno.fechaVencimiento
-      ? new Date(alumno.fechaVencimiento.toDate?.() || alumno.fechaVencimiento)
-      : null;
-    // Si paga antes de que venza el plan, se suma el mes al vencimiento actual (no a hoy)
-    // para que no pierda los días restantes y mantenga siempre el mismo día de corte.
-    const base = vencAnterior && vencAnterior > hoy ? vencAnterior : hoy;
-    const vence = new Date(base.getFullYear(), base.getMonth() + 1, base.getDate());
+    const hoy   = new Date();
+    const meses = Math.max(1, Number(mesesAPagar) || 1);
+    // Regla simple: el vencimiento siempre se cuenta desde el día en que se
+    // confirma el pago (no desde el vencimiento que tenía guardado antes).
+    const vence = new Date(hoy.getFullYear(), hoy.getMonth() + meses, hoy.getDate());
 
     const nroRecibo = await obtenerNroRecibo();
 
     const descuentoAplicado = descuentoPct > 0 ? `${descuentoPct}% de descuento` : null;
+    const planNombreRecibo  = (alumno.planNombre || "") + (meses > 1 ? ` (${meses} meses)` : "");
 
     await updateDoc(doc(db, "usuarios", alumno.uid), {
       estado:             "activo",
@@ -318,6 +349,7 @@ export default function PagosPendientes() {
       alumnoApellido:     alumno.apellido || "",
       planId:             alumno.planId || null,
       planNombre:         alumno.planNombre || null,
+      mesesPagados:       meses,
       montoEfectivo,
       montoTransferencia,
       montoTotal:         totalFinal,
@@ -333,13 +365,14 @@ export default function PagosPendientes() {
 
     const desc = descuentoPct > 0 ? ` (-${descuentoPct}%)` : "";
     const insc = cobrarInscripcion ? ` + inscripción $${montoInscripcion.toLocaleString("es-AR")}` : "";
+    const mesesTxt = meses > 1 ? ` — ${meses} meses` : "";
     await registrarActividad(
       miPerfil?.uid || "", miNombre.trim(),
       "pago_confirmado",
-      `Pago confirmado: ${alumno.nombre} ${alumno.apellido} — $${totalFinal.toLocaleString("es-AR")}${desc}${insc} — Recibo #${nroRecibo}`
+      `Pago confirmado: ${alumno.nombre} ${alumno.apellido} — $${totalFinal.toLocaleString("es-AR")}${desc}${insc}${mesesTxt} — Recibo #${nroRecibo}`
     );
 
-    abrirRecibo(alumno, nroRecibo, { montoEfectivo, montoTransferencia, totalFinal });
+    abrirRecibo({ ...alumno, planNombre: planNombreRecibo }, nroRecibo, { montoEfectivo, montoTransferencia, totalFinal });
     setProcesando(null);
   }
 
@@ -525,6 +558,7 @@ export default function PagosPendientes() {
                         </div>
                         <div style={{ fontSize:11, color:"#aaa" }}>
                           {p.planNombre} · {fecha.toLocaleDateString("es-AR")}
+                          {p.mesesPagados > 1 && <span style={{ color:"#1e40af", marginLeft:4 }}>· {p.mesesPagados} meses</span>}
                           {p.descuentoAplicado && <span style={{ color:"#10b981", marginLeft:4 }}>· {p.descuentoAplicado}</span>}
                           {!esPagoVigente && !p.anulado && <span style={{ marginLeft:4 }}>· pago anterior</span>}
                         </div>

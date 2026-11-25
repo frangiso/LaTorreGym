@@ -271,7 +271,7 @@ function AlumnoCard({ alumno: a, planes, cupoMax, editando, onEditar, onCerrar }
             <p style={{ fontSize: 13, color: "#888", margin: "0 0 16px" }}>{a.nombre} {a.apellido} · {a.planNombre}</p>
             {a.estado === "activo" && vence && (
               <p style={{ fontSize: 12, color: "#888", margin: "0 0 16px", background: "#f9f9f9", borderRadius: 8, padding: "8px 12px" }}>
-                Plan vigente hasta el <strong>{vence}</strong>. Al confirmar el pago se suma un mes a partir de esa fecha (no se pierden los días restantes).
+                Plan vigente hasta el <strong>{vence}</strong>. Este botón solo anota el pago como pendiente — la cantidad de meses y la fecha de vencimiento se definen al confirmarlo en "Pagos pendientes".
               </p>
             )}
             <p style={{ fontSize: 12, fontWeight: 500, color: "#555", margin: "0 0 8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Método de pago</p>
@@ -540,6 +540,7 @@ function AlumnoCard({ alumno: a, planes, cupoMax, editando, onEditar, onCerrar }
                             </div>
                             <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>
                               {p.planNombre || "Sin plan"}
+                              {p.mesesPagados > 1 ? ` · ${p.mesesPagados} meses` : ""}
                               {p.descuentoAplicado ? ` · ${p.descuentoAplicado}` : ""}
                               {p.inscripcionCobrada ? ` · + inscripción $${(p.montoInscripcion || 0).toLocaleString("es-AR")}` : ""}
                             </div>

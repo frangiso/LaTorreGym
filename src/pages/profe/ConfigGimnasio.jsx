@@ -1,6 +1,6 @@
 import { exportarBackupExcel } from "../../utils/exportarExcel";
 import { useEffect, useState } from "react";
-import { doc, getDoc, setDoc, getDocs, deleteDoc, collection, query, where, writeBatch, addDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, getDocs, deleteDoc, updateDoc, collection, query, where, writeBatch, addDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useData } from "../../context/DataContext";
 import { crearReservasFijas } from "../../reservasFijas";
@@ -155,6 +155,9 @@ export default function ConfigGimnasio() {
 
       {/* Migración de historial de pagos */}
       <MigrarHistorialPagos />
+
+      {/* Recalcular vencimientos mal calculados */}
+      <RecalcularVencimientos />
 
       {/* Reset de datos */}
       <ResetDatos />
@@ -392,6 +395,72 @@ function MigrarHistorialPagos() {
           border: "none", borderRadius: 10, padding: "12px 24px", fontSize: 14, fontWeight: 500,
           cursor: migrando ? "default" : "pointer" }}>
         {migrando ? "Migrando..." : "📋 Migrar pagos existentes"}
+      </button>
+    </div>
+  );
+}
+
+function RecalcularVencimientos() {
+  const { alumnos } = useData();
+  const [procesando, setProcesando] = useState(false);
+  const [resultado, setResultado]   = useState(null);
+
+  async function recalcular() {
+    if (!confirm("¿Recalcular el vencimiento de todos los alumnos activos según su último pago (fecha de pago + meses pagados)? Esto corrige fechas que hayan quedado mal con la regla anterior.")) return;
+    setProcesando(true);
+    setResultado(null);
+    try {
+      let corregidos = 0, sinCambios = 0, sinPagos = 0;
+      const activos = alumnos.filter(a => a.estado === "activo");
+      for (const a of activos) {
+        const snap = await getDocs(query(collection(db, "pagos"), where("alumnoUid", "==", a.uid)));
+        const pagos = snap.docs.map(d => d.data()).filter(p => !p.anulado && p.fechaPago);
+        if (pagos.length === 0) { sinPagos++; continue; }
+
+        pagos.sort((x, y) => {
+          const fx = x.fechaPago?.toDate?.() || new Date(x.fechaPago);
+          const fy = y.fechaPago?.toDate?.() || new Date(y.fechaPago);
+          return fy - fx;
+        });
+        const ultimo    = pagos[0];
+        const fechaPago = ultimo.fechaPago?.toDate?.() || new Date(ultimo.fechaPago);
+        const meses     = ultimo.mesesPagados || 1;
+        const correcto  = new Date(fechaPago.getFullYear(), fechaPago.getMonth() + meses, fechaPago.getDate());
+
+        const actual = a.fechaVencimiento ? (a.fechaVencimiento.toDate?.() || new Date(a.fechaVencimiento)) : null;
+        if (actual && actual.toDateString() === correcto.toDateString()) { sinCambios++; continue; }
+
+        await updateDoc(doc(db, "usuarios", a.uid), { fechaVencimiento: correcto });
+        corregidos++;
+      }
+      setResultado({ corregidos, sinCambios, sinPagos });
+    } catch(e) {
+      alert("Error al recalcular: " + e.message);
+    }
+    setProcesando(false);
+  }
+
+  return (
+    <div style={{ paddingTop: 24, borderTop: "1px solid #e0e0e0", marginBottom: 32 }}>
+      <h3 style={{ fontSize: 15, fontWeight: 500, color: "#111", margin: "0 0 6px" }}>Recalcular vencimientos</h3>
+      <p style={{ fontSize: 13, color: "#888", margin: "0 0 16px", lineHeight: 1.5 }}>
+        Corrige el vencimiento de cada alumno activo según su último pago registrado (fecha de pago + meses pagados).
+        Usalo una vez para arreglar las fechas que quedaron mal calculadas con la regla anterior.
+        Es seguro apretarlo varias veces: a quien ya esté bien no se le toca nada.
+      </p>
+      {resultado && (
+        <div style={{ background: "#dcfce7", border: "1px solid #86efac", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
+          <p style={{ fontSize: 13, color: "#065f46", margin: 0 }}>
+            ✓ {resultado.corregidos} corregido{resultado.corregidos !== 1 ? "s" : ""}, {resultado.sinCambios} ya estaban bien
+            {resultado.sinPagos > 0 ? `, ${resultado.sinPagos} sin pagos registrados (no se tocaron)` : ""}.
+          </p>
+        </div>
+      )}
+      <button onClick={recalcular} disabled={procesando}
+        style={{ background: procesando ? "#e0e0e0" : "#F5C400", color: procesando ? "#aaa" : "#111",
+          border: "none", borderRadius: 10, padding: "12px 24px", fontSize: 14, fontWeight: 500,
+          cursor: procesando ? "default" : "pointer" }}>
+        {procesando ? "Recalculando..." : "🔁 Recalcular vencimientos"}
       </button>
     </div>
   );
